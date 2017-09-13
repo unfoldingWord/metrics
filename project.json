@@ -1,0 +1,8 @@
+{
+  "name": "metrics",
+  "description": "",
+  "memory": 128,
+  "timeout": 60,
+  "role": "arn:aws:iam::002723143144:role/metrics_lambda_function",
+  "environment": {}
+}
