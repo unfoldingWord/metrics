@@ -1,6 +1,0 @@
-{
-  "description": "Gets metrics from Door43-Catalog",
-  "hooks":{
-    "build": "pip install -r requirements.txt -t ."
-  }
-}
