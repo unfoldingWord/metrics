@@ -10,4 +10,6 @@ Make sure you have docker installed.
 
 Build the container with `sudo docker build -t py-metrics .` .
 
-Run the resulting container with `sudo docker run py-metrics`.  The results will be output to console but are also sent to the statsd metric collecting service.
+Run the resulting container with `sudo docker run py-metrics`.
+
+When running on the server, use `sudo docker run --net="host" py-metrics` so that the app has access to the statsd server.
