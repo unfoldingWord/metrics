@@ -1,4 +1,5 @@
 import json
+import statsd
 import logging
 import requests
 
@@ -10,35 +11,36 @@ def getJSONfromURL(url):
     raw = requests.get(url)
     return raw.json()
 
-def catalog():
-    metrics = {}
-    catalog = getJSONfromURL('https://api.door43.org/v3/catalog.json')
-    langnames = getJSONfromURL('https://td.unfoldingword.org/exports/langnames.json')
+def push(metrics, host='localhost', port=8125, prefix=''):
+    stats = statsd.StatsClient(host, port, prefix=prefix)
+    for k,v in metrics.items():
+        stats.gauge(k, v)
 
-    # Door43-Catalog metrics
-    metrics['catalog_total_langs'] = len(catalog['languages'])
-    metrics['catalog_obs_langs'] = 0
-    metrics['catalog_bible_langs'] = 0
-    metrics['catalog_ta_langs'] = 0
-    gl_codes = [x['lc'] for x in langnames if x['gw']]
-    metrics['catalog_gl_with_content'] = len([x for x in catalog['languages'] if x['identifier'] in gl_codes])
+def catalog(gl_codes, metrics={}):
+    catalog = getJSONfromURL('https://api.door43.org/v3/catalog.json')
+    metrics['total_langs'] = len(catalog['languages'])
+    metrics['gls_with_content'] = len([x for x in catalog['languages'] if x['identifier'] in gl_codes])
+    all_resources = 0
     for x in catalog['languages']:
         for y in x['resources']:
-            if y['identifier'] == 'obs':
-               metrics['catalog_obs_langs'] += 1 
-            elif y['identifier'] == 'ta':
-               metrics['catalog_ta_langs'] += 1 
-            elif y['identifier'] not in ['obs-tq', 'tw', 'tq', 'tn', 'obs-tn']:
-               metrics['catalog_bible_langs'] += 1 
-
-    # tD metrics
-    metrics['td_total_langs'] = len(langnames)
-    metrics['td_gls'] = len(gl_codes)
-    metrics['td_private_use_langs'] = len([x for x in langnames if '-x-' in x['lc']])
+            all_resources += 1
+            if not 'resources_{}_langs'.format(y['identifier']) in metrics:
+                metrics['resources_{}_langs'.format(y['identifier'])] =0
+            metrics['resources_{}_langs'.format(y['identifier'])] +=1
+    metrics['all_resources'] = all_resources
     logger.info(metrics)
+    return metrics
 
-def github():
-    metrics = {}
+def tD(metrics={}):
+    langnames = getJSONfromURL('https://td.unfoldingword.org/exports/langnames.json')
+    gl_codes = [x['lc'] for x in langnames if x['gw']]
+    metrics['langs_all'] = len(langnames)
+    metrics['langs_gls'] = len(gl_codes)
+    metrics['langs_private_use'] = len([x for x in langnames if '-x-' in x['lc']])
+    logger.info(metrics)
+    return (metrics, gl_codes)
+
+def github(metrics={}):
     release_api = 'https://api.github.com/repos/unfoldingWord-dev/{0}/releases'
     software = ['translationCore', 'ts-android', 'ts-desktop', 'uw-android']
     for x in software:
@@ -47,11 +49,23 @@ def github():
         for entry in releases:
             for asset in entry['assets']:
                 metrics['software_{0}'.format(x)] += asset['download_count']
-
     logger.info(metrics)
+    return metrics
 
+def play(metrics={}):
+    metrics['ts-android_total'] = 1698
+    metrics['uw-android_total'] = 1393
+    metrics['tk-android_total'] = 713
+    logger.info(metrics)
+    return metrics
 
 if __name__ == "__main__":
     logging.basicConfig()
-    catalog()
-    github()
+    td_metrics, gl_codes = tD()
+    push(td_metrics, prefix="td")
+    catalog_metrics = catalog(gl_codes)
+    push(catalog_metrics, prefix="door43_catalog")
+    github_metrics = github()
+    push(github_metrics, prefix="github")
+    play_metrics = play()
+    push(play_metrics, prefix="play")
