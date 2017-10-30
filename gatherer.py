@@ -1,3 +1,5 @@
+import os
+import sys
 import json
 import statsd
 import logging
@@ -6,9 +8,14 @@ import requests
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
 
-def getJSONfromURL(url):
-    raw = requests.get(url)
+
+def getJSONfromURL(url, token=""):
+    if token:
+        raw = requests.get(url, auth=('token', token))
+    else:
+        raw = requests.get(url)
     return raw.json()
 
 def push(metrics, host='localhost', port=8125, prefix=''):
@@ -59,6 +66,28 @@ def play(metrics={}):
     logger.info(metrics)
     return metrics
 
+def getHoursRemaining(title):
+    hours = 0
+    if title.startswith('['):
+        hours = int(title.split()[0].strip('[]'))
+    return hours
+
+def getMilestoneMetrics(issues):
+    metrics = {}
+    for item in issues:
+        hours_key = 'hours_{0}'.format(item['assignee']['login'])
+        issues_key = 'issues_{0}'.format(item['assignee']['login'])
+        # Initialize variables
+        if hours_key not in metrics:
+            metrics[hours_key] = 0
+        if issues_key not in metrics:
+            metrics[issues_key] = 0
+        # Increment
+        metrics[hours_key] += getHoursRemaining(item['title'].strip())
+        metrics[issues_key] += 1
+    return metrics
+
+
 if __name__ == "__main__":
     logging.basicConfig()
     td_metrics, gl_codes = tD()
@@ -69,3 +98,13 @@ if __name__ == "__main__":
     push(github_metrics, prefix="github")
     play_metrics = play()
     push(play_metrics, prefix="play")
+
+    # tC Dev Metrics
+    github_token = os.getenv('GITHUB_TOKEN', False)
+    if not github_token:
+        logger.warn('Environment variable GITHUB_TOKEN not found.')
+        sys.exit(1)
+    issues = getJSONfromURL(issues_api.format('43'), github_token)
+    milestone_metrics = getMilestoneMetrics(issues)
+    logger.info(milestone_metrics)
+    push(milestone_metrics, prefix="tc_dev")
