@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import socket
 import statsd
 import logging
 import requests
@@ -24,6 +25,13 @@ def push(metrics, host='localhost', port=8125, prefix=''):
     stats = statsd.StatsClient(host, port, prefix=prefix)
     for k,v in metrics.items():
         stats.gauge(k, v)
+
+def pushGraphite(messages, host='127.0.0.1', port=2003):
+    for m in messages:
+        sock = socket.socket()
+        sock.connect((host, port))
+        sock.sendall(m)
+        sock.close()
 
 def catalog(gl_codes, metrics={}):
     catalog = getJSONfromURL('https://api.door43.org/v3/catalog.json')
@@ -93,6 +101,7 @@ def getMilestones():
     return [x['number'] for x in milestone_json]
 
 def getTaskMetrics(tasks, metrics={}):
+    messages = []
     for item in tasks:
         hours_key = 'hours_{0}'.format(item['assignee']['login'])
         # Initialize variables
@@ -100,7 +109,9 @@ def getTaskMetrics(tasks, metrics={}):
             metrics[hours_key] = 0
         # Increment
         metrics[hours_key] += getHoursRemaining(item['title'].strip())
-    return metrics
+    for k,v in metrics.items():
+        messages.append('stats.gauges.tc_dev.{0} {1}\n'.format(k, v))
+    return messages
 
 
 if __name__ == "__main__":
@@ -122,4 +133,4 @@ if __name__ == "__main__":
     tasks = getJSONfromURL(tasks_api, github_token)
     tasks_metrics = getTaskMetrics(tasks)
     logger.info(tasks_metrics)
-    push(tasks_metrics, prefix="tc_dev")
+    pushGraphite(tasks_metrics)
