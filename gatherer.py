@@ -31,7 +31,7 @@ def pushGraphite(messages, host='127.0.0.1', port=2003):
     for m in messages:
         sock = socket.socket()
         sock.connect((host, port))
-        sock.sendall(m)
+        sock.sendall(m.encode('utf-8'))
         sock.close()
 
 def catalog(gl_codes, metrics={}):
