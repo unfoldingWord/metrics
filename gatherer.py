@@ -5,6 +5,7 @@ import socket
 import statsd
 import logging
 import requests
+import datetime
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -102,6 +103,7 @@ def getMilestones():
 
 def getTaskMetrics(tasks, metrics={}):
     messages = []
+    now = datetime.datetime.now().strftime('%s')
     for item in tasks:
         hours_key = 'hours_{0}'.format(item['assignee']['login'])
         # Initialize variables
@@ -110,7 +112,7 @@ def getTaskMetrics(tasks, metrics={}):
         # Increment
         metrics[hours_key] += getHoursRemaining(item['title'].strip())
     for k,v in metrics.items():
-        messages.append('stats.gauges.tc_dev.{0} {1}\n'.format(k, v))
+        messages.append('stats.gauges.tc_dev.{0} {1} {2}\n'.format(k, v, now))
     return messages
 
 
