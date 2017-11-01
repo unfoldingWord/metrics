@@ -10,6 +10,7 @@ logger.setLevel(logging.INFO)
 
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
+tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task"
 
 
 def getJSONfromURL(url, token=""):
@@ -91,6 +92,16 @@ def getMilestones():
     milestone_json = getJSONfromURL(milestones_api, github_token)
     return [x['number'] for x in milestone_json]
 
+def getTaskMetrics(tasks, metrics={}):
+    for item in tasks:
+        hours_key = 'hours_{0}'.format(item['assignee']['login'])
+        # Initialize variables
+        if hours_key not in metrics:
+            metrics[hours_key] = 0
+        # Increment
+        metrics[hours_key] += getHoursRemaining(item['title'].strip())
+    return metrics
+
 
 if __name__ == "__main__":
     logging.basicConfig()
@@ -108,10 +119,7 @@ if __name__ == "__main__":
     if not github_token:
         logger.warn('Environment variable GITHUB_TOKEN not found.')
         sys.exit(1)
-    milestone_metrics = {}
-    for milestone in getMilestones():
-        issues = getJSONfromURL(issues_api.format(milestone), github_token)
-        milestone_metrics = getMilestoneMetrics(issues, milestone_metrics)
-        logger.info(milestone_metrics)
-    logger.info(milestone_metrics)
-    push(milestone_metrics, prefix="tc_dev")
+    tasks = getJSONfromURL(tasks_api, github_token)
+    tasks_metrics = getTaskMetrics(tasks)
+    logger.info(tasks_metrics)
+    push(tasks_metrics, prefix="tc_dev")
