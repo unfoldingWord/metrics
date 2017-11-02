@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 import socket
@@ -13,7 +14,21 @@ logger.setLevel(logging.INFO)
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
 tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task"
+zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
 
+def get_env_var(env_name):
+    env_variable = os.getenv(env_name, False)
+    if not env_variable:
+        logger.warn('Environment variable {0} not found.'.format(env_name))
+        sys.exit(1)
+    return env_variable
+
+def getGraphiteMessages(metrics, ns):
+    messages = []
+    now = datetime.datetime.now().strftime('%s')
+    for k,v in metrics.items():
+        messages.append('stats.gauges.{0}.{1} {2} {3}\n'.format(ns, k, v, now))
+    return messages
 
 def getJSONfromURL(url, token=""):
     if token:
@@ -102,8 +117,6 @@ def getMilestones():
     return [x['number'] for x in milestone_json]
 
 def getTaskMetrics(tasks, metrics={}):
-    messages = []
-    now = datetime.datetime.now().strftime('%s')
     for item in tasks:
         hours_key = 'hours_{0}'.format(item['assignee']['login'])
         # Initialize variables
@@ -111,9 +124,19 @@ def getTaskMetrics(tasks, metrics={}):
             metrics[hours_key] = 0
         # Increment
         metrics[hours_key] += getHoursRemaining(item['title'].strip())
-    for k,v in metrics.items():
-        messages.append('stats.gauges.tc_dev.{0} {1} {2}\n'.format(k, v, now))
-    return messages
+    return metrics
+
+def getLanesMetrics(lanes, metrics={}):
+    for lane in lanes['pipelines']:
+        sanitized_name = re.sub(r'\W+', '-', lane['name'])
+        lane_issues_key = 'lane_issues_{0}'.format(sanitized_name)
+        metrics[lane_issues_key] = len(lane['issues'])
+        lane_points_key = 'lane_points_{0}'.format(sanitized_name)
+        metrics[lane_points_key] = 0
+        for issue in lane['issues']:
+            if 'estimate' in issue:
+                metrics[lane_points_key] += issue['estimate']['value']
+    return metrics
 
 
 if __name__ == "__main__":
@@ -127,12 +150,18 @@ if __name__ == "__main__":
     play_metrics = play()
     push(play_metrics, prefix="play")
 
-    # tC Dev Metrics
-    github_token = os.getenv('GITHUB_TOKEN', False)
-    if not github_token:
-        logger.warn('Environment variable GITHUB_TOKEN not found.')
-        sys.exit(1)
+    # tC Dev Hour Metrics
+    github_token = get_env_var('GITHUB_TOKEN')
     tasks = getJSONfromURL(tasks_api, github_token)
     tasks_metrics = getTaskMetrics(tasks)
     logger.info(tasks_metrics)
-    pushGraphite(tasks_metrics)
+    tasks_messages = getGraphiteMessages(tasks_metrics, 'tc_dev')
+    pushGraphite(tasks_messages)
+
+    # tC Dev Lane Metrics
+    zenhub_token = get_env_var('ZENHUB_TOKEN')
+    lanes = getJSONfromURL(zenhub_api.format(zenhub_token))
+    lanes_metrics = getLanesMetrics(lanes)
+    logger.info(lanes_metrics)
+    lanes_messages = getGraphiteMessages(lanes_metrics, 'tc_dev')
+    pushGraphite(lanes_messages)
