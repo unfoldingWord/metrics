@@ -15,6 +15,7 @@ milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
 tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task"
 zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
+sendgrid_api = "https://api.sendgrid.com/v3/stats?start_date={0}"
 
 def get_env_var(env_name):
     env_variable = os.getenv(env_name, False)
@@ -30,9 +31,11 @@ def getGraphiteMessages(metrics, ns):
         messages.append('stats.gauges.{0}.{1} {2} {3}\n'.format(ns, k, v, now))
     return messages
 
-def getJSONfromURL(url, token=""):
+def getJSONfromURL(url, token="", auth=""):
     if token:
         raw = requests.get(url, auth=('token', token))
+    if auth:
+        raw = requests.get(url, headers={'Authorization': auth})
     else:
         raw = requests.get(url)
     return raw.json()
@@ -165,3 +168,12 @@ if __name__ == "__main__":
     logger.info(lanes_metrics)
     lanes_messages = getGraphiteMessages(lanes_metrics, 'tc_dev')
     pushGraphite(lanes_messages)
+
+    # SendGrid stats
+    sendgrid_token = get_env_var('SENDGRID_TOKEN')
+    sendgrid_stats = getJSONfromURL(sendgrid_api.format(
+                       datetime.datetime.today().strftime('%Y-%m-%d')), auth=sendgrid_token)
+    if sendgrid_stats:
+        sendgrid_metrics = sendgrid_stats[0]['stats'][0]['metrics']
+        logger.info(sendgrid_metrics)
+        push(sendgrid_metrics, prefix="sendgrid")
