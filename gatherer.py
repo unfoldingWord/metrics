@@ -11,6 +11,7 @@ import datetime
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+devs = ['bspidel', 'klappy', 'RoyalSix', 'mannycolon', 'richmahn', 'PhotoNomad0']
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
 tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task"
@@ -120,12 +121,11 @@ def getMilestones():
     return [x['number'] for x in milestone_json]
 
 def getTaskMetrics(tasks, metrics={}):
+    # Initialize to zero so that graphite gets a zero even if a dev has no tasks
+    for dev in devs:
+       metrics['hours_{0}'.format(dev)] = 0
     for item in tasks:
         hours_key = 'hours_{0}'.format(item['assignee']['login'])
-        # Initialize variables
-        if hours_key not in metrics:
-            metrics[hours_key] = 0
-        # Increment
         metrics[hours_key] += getHoursRemaining(item['title'].strip())
     return metrics
 
