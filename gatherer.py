@@ -90,9 +90,9 @@ def github(metrics={}):
     return metrics
 
 def play(metrics={}):
-    metrics['ts-android_total'] = 1698
-    metrics['uw-android_total'] = 1393
-    metrics['tk-android_total'] = 713
+    metrics['ts-android_total'] = 1737
+    metrics['uw-android_total'] = 1411
+    metrics['tk-android_total'] = 724
     logger.info(metrics)
     return metrics
 
