@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 devs = ['bspidel', 'klappy', 'RoyalSix', 'mannycolon', 'richmahn', 'PhotoNomad0']
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
-tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task"
+tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
 zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
 sendgrid_api = "https://api.sendgrid.com/v3/stats?start_date={0}"
 
@@ -122,8 +122,9 @@ def getMilestones():
 
 def getTaskMetrics(tasks, metrics={}):
     # Initialize to zero so that graphite gets a zero even if a dev has no tasks
-    for dev in devs:
-       metrics['hours_{0}'.format(dev)] = 0
+    if not metrics:
+        for dev in devs:
+            metrics['hours_{0}'.format(dev)] = 0
     for item in tasks:
         for user in item['assignees']:
             hours_key = 'hours_{0}'.format(user['login'])
@@ -156,8 +157,9 @@ if __name__ == "__main__":
 
     # tC Dev Hour Metrics
     github_token = get_env_var('GITHUB_TOKEN')
-    tasks = getJSONfromURL(tasks_api, github_token)
-    tasks_metrics = getTaskMetrics(tasks)
+    for x in [1, 2, 3]:
+       tasks = getJSONfromURL(tasks_api.format(x), github_token)
+       tasks_metrics = getTaskMetrics(tasks)
     logger.info(tasks_metrics)
     tasks_messages = getGraphiteMessages(tasks_metrics, 'tc_dev')
     pushGraphite(tasks_messages)
