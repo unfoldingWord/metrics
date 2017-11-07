@@ -125,8 +125,9 @@ def getTaskMetrics(tasks, metrics={}):
     for dev in devs:
        metrics['hours_{0}'.format(dev)] = 0
     for item in tasks:
-        hours_key = 'hours_{0}'.format(item['assignee']['login'])
-        metrics[hours_key] += getHoursRemaining(item['title'].strip())
+        for user in item['assignees']:
+            hours_key = 'hours_{0}'.format(user['login'])
+            metrics[hours_key] += getHoursRemaining(item['title'].strip())
     return metrics
 
 def getLanesMetrics(lanes, metrics={}):
