@@ -11,7 +11,13 @@ import datetime
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-devs = ['bspidel', 'klappy', 'RoyalSix', 'mannycolon', 'richmahn', 'PhotoNomad0']
+devs = [ ('bspidel', 2),
+         ('klappy', 5),
+         ('RoyalSix', 6),
+         ('mannycolon', 6),
+         ('richmahn', 6),
+         ('PhotoNomad0', 6)
+       ]
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
 tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
@@ -102,29 +108,32 @@ def getHoursRemaining(title):
         hours = int(title.split()[0].strip('[]'))
     return hours
 
-def getMilestoneMetrics(issues, metrics={}):
-    for item in issues:
-        hours_key = 'hours_{0}'.format(item['assignee']['login'])
-        issues_key = 'issues_{0}'.format(item['assignee']['login'])
-        # Initialize variables
-        if hours_key not in metrics:
-            metrics[hours_key] = 0
-        if issues_key not in metrics:
-            metrics[issues_key] = 0
-        # Increment
-        metrics[hours_key] += getHoursRemaining(item['title'].strip())
-        metrics[issues_key] += 1
+def getDaysRemaining(timeLeft):
+    # Subtract 2 days because of how the milestone records the due date
+    daysLeft = timeLeft.days - 1
+    if daysLeft < 3:
+        return 0
+    if daysLeft <= 8:
+        return daysLeft - 2
+    if daysLeft > 8:
+        return daysLeft - 4
+
+def getAvailableHours(multiplier, metrics={}):
+    for dev in devs:
+        metrics['hours_avail_{0}'.format(dev[0])] = (dev[1] * multiplier)
     return metrics
 
-def getMilestones():
+def getMilestoneTimeLeft():
     milestone_json = getJSONfromURL(milestones_api, github_token)
-    return [x['number'] for x in milestone_json]
+    endDate = milestone_json[0]['due_on']
+    y, m, d = [int(x) for x in endDate.split('T')[0].split('-')]
+    return datetime.datetime(y, m, d) - datetime.datetime.today()
 
 def getTaskMetrics(tasks, metrics={}):
     # Initialize to zero so that graphite gets a zero even if a dev has no tasks
     if not metrics:
         for dev in devs:
-            metrics['hours_{0}'.format(dev)] = 0
+            metrics['hours_{0}'.format(dev[0])] = 0
     for item in tasks:
         for user in item['assignees']:
             hours_key = 'hours_{0}'.format(user['login'])
@@ -157,12 +166,16 @@ if __name__ == "__main__":
 
     # tC Dev Hour Metrics
     github_token = get_env_var('GITHUB_TOKEN')
+    hour_metrics = {}
     for x in [1, 2, 3]:
        tasks = getJSONfromURL(tasks_api.format(x), github_token)
-       tasks_metrics = getTaskMetrics(tasks)
-    logger.info(tasks_metrics)
-    tasks_messages = getGraphiteMessages(tasks_metrics, 'tc_dev')
-    pushGraphite(tasks_messages)
+       hour_metrics = getTaskMetrics(tasks, hour_metrics)
+    timeLeft = getMilestoneTimeLeft()
+    daysLeft = getDaysRemaining(timeLeft)
+    hour_metrics = getAvailableHours(daysLeft, hour_metrics)
+    logger.info(hour_metrics)
+    hour_messages = getGraphiteMessages(hour_metrics, 'tc_dev')
+    pushGraphite(hour_messages)
 
     # tC Dev Lane Metrics
     zenhub_token = get_env_var('ZENHUB_TOKEN')
