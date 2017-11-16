@@ -18,11 +18,16 @@ devs = [ ('bspidel', 2),
          ('richmahn', 6),
          ('PhotoNomad0', 6)
        ]
+api_status = { 'complete': 0,
+               'in-progress': 1,
+               'error': 2,
+             }
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
 tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
 zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
 sendgrid_api = "https://api.sendgrid.com/v3/stats?start_date={0}"
+d43api_api = "https://api.door43.org/v3/lambda/status"
 
 def get_env_var(env_name):
     env_variable = os.getenv(env_name, False)
@@ -152,9 +157,22 @@ def getLanesMetrics(lanes, metrics={}):
                 metrics[lane_points_key] += issue['estimate']['value']
     return metrics
 
+def d43api(status, metrics={}):
+    for endpoint in status['functions']:
+        name = endpoint['name'].replace('.', '_')
+        try:
+            metrics[name] = api_status[endpoint['status']]
+        except KeyError:
+            metrics[name] = 3
+    logger.info(metrics)
+    return metrics
+
 
 if __name__ == "__main__":
     logging.basicConfig()
+    status = getJSONfromURL(d43api_api)
+    status_metrics = d43api(status)
+    push(status_metrics, prefix="door43_api")
     td_metrics, gl_codes = tD()
     push(td_metrics, prefix="td")
     catalog_metrics = catalog(gl_codes)
