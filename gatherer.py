@@ -20,6 +20,7 @@ devs = [ ('bspidel', 2),
        ]
 api_status = { 'complete': 0,
                'in-progress': 1,
+               'incomplete': 1,
                'error': 2,
              }
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
