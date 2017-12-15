@@ -116,7 +116,7 @@ def getHoursRemaining(title):
 
 def getDaysRemaining(timeLeft):
     # Subtract 2 days because of how the milestone records the due date
-    daysLeft = timeLeft.days - 1
+    daysLeft = timeLeft.days
     if daysLeft < 3:
         return 0
     if daysLeft <= 8:
