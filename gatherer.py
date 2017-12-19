@@ -13,9 +13,9 @@ logger.setLevel(logging.INFO)
 
 devs = [ ('bspidel', 2),
          ('klappy', 4),
-         ('RoyalSix', 6),
-         ('mannycolon', 6),
-         ('richmahn', 5),
+         ('RoyalSix', 0),
+         ('mannycolon', 5),
+         ('richmahn', 1),
          ('PhotoNomad0', 5)
        ]
 api_status = { 'complete': 0,
