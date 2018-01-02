@@ -12,10 +12,10 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 devs = [ ('bspidel', 2),
-         ('klappy', 4),
-         ('RoyalSix', 0),
-         ('mannycolon', 5),
-         ('richmahn', 1),
+         ('klappy', 5),
+         ('RoyalSix', 6),
+         ('mannycolon', 3),
+         ('richmahn', 5),
          ('PhotoNomad0', 5)
        ]
 api_status = { 'complete': 0,
