@@ -96,8 +96,9 @@ def github(metrics={}):
         metrics['software_{0}'.format(x)] = 0
         releases = getJSONfromURL(release_api.format(x))
         for entry in releases:
-            for asset in entry['assets']:
-                metrics['software_{0}'.format(x)] += asset['download_count']
+            if 'assets' in entry:
+                for asset in entry['assets']:
+                    metrics['software_{0}'.format(x)] += asset['download_count']
     logger.info(metrics)
     return metrics
 
