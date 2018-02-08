@@ -145,6 +145,7 @@ def getTaskMetrics(tasks, metrics={}):
         for dev in devs:
             metrics['hours_{0}'.format(dev[0])] = 0
     for item in tasks:
+        if not 'assignees' in item: continue
         for user in item['assignees']:
             hours_key = 'hours_{0}'.format(user['login'])
             metrics[hours_key] += getHoursRemaining(item['title'].strip())
