@@ -148,6 +148,7 @@ def getTaskMetrics(tasks, metrics={}):
         if not 'assignees' in item: continue
         for user in item['assignees']:
             hours_key = 'hours_{0}'.format(user['login'])
+            if hours_key not in metrics: continue
             metrics[hours_key] += getHoursRemaining(item['title'].strip())
     return metrics
 
@@ -188,8 +189,11 @@ if __name__ == "__main__":
     play_metrics = play()
     push(play_metrics, prefix="play")
 
-    # tC Dev Hour Metrics
+    # Load Github var and log our rate_limit details
     github_token = get_env_var('GITHUB_TOKEN')
+    logger.info(getJSONfromURL('https://api.github.com/rate_limit'))
+
+    # tC Dev Hour Metrics
     hour_metrics = {}
     for x in [1, 2, 3]:
        tasks = getJSONfromURL(tasks_api.format(x), github_token)
