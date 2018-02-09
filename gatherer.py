@@ -110,12 +110,11 @@ def play(metrics={}):
     return metrics
 
 def getHoursRemaining(title):
-    if title.startswith('['):
-        number = title.split()[0].strip('[]')
-        try:
-            hours = int(number)
-        except ValueError:
-            hours = 0
+    number = title.split()[0].strip('[]')
+    try:
+        hours = int(number)
+    except ValueError:
+        hours = 0
     return hours
 
 def getDaysRemaining(timeLeft):
