@@ -183,8 +183,11 @@ if __name__ == "__main__":
     push(td_metrics, prefix="td")
     catalog_metrics = catalog(gl_codes)
     push(catalog_metrics, prefix="door43_catalog")
-    github_metrics = github()
-    push(github_metrics, prefix="github")
+    # Only get these periodically (helps stay under rate limit)
+    if (datetime.datetime.now().minute == 0 and 
+              datetime.datetime.now().hour in [8, 12, 16, 20]):
+        github_metrics = github()
+        push(github_metrics, prefix="github")
     play_metrics = play()
     push(play_metrics, prefix="play")
 
