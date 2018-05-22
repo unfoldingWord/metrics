@@ -11,11 +11,11 @@ import datetime
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-devs = [ ('bspidel', 2),
+devs = [ ('bspidel', 1),
          ('klappy', 0),
          ('RoyalSix', 5),
          ('mannycolon', 5),
-         ('richmahn', 5),
+         ('richmahn', 4),
          ('PhotoNomad0', 5)
        ]
 api_status = { 'complete': 0,
