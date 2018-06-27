@@ -244,6 +244,8 @@ def trelloUpload(html, dest):
     dest += '/index.html'
     html_str = '\n'.join(html)
     output = open('template.html', 'rb').read()
+    output += u'<p>{0}</p>'.format(datetime.datetime.today().strftime(
+                                           '%Y-%m-%d %H:%M')).encode('utf-8')
     output += html_str.encode('utf-8')
     output += b'\n</body>\n</html>'
     s3.Bucket('trello.door43.org').put_object(
@@ -297,7 +299,7 @@ if __name__ == "__main__":
     sendgrid_token = get_env_var('SENDGRID_TOKEN')
     sendgrid_stats = getJSONfromURL(sendgrid_api.format(
                        datetime.datetime.today().strftime('%Y-%m-%d')), auth=sendgrid_token)
-    if not sendgrid_stats['errors']:
+    if type(sendgrid_stats) == list:
         sendgrid_metrics = sendgrid_stats[0]['stats'][0]['metrics']
         logger.info(sendgrid_metrics)
         push(sendgrid_metrics, prefix="sendgrid")
