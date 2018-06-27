@@ -59,9 +59,9 @@ def getGraphiteMessages(metrics, ns):
 def getJSONfromURL(url, token="", auth="", params=""):
     if token:
         raw = requests.get(url, auth=('token', token))
-    if auth:
+    elif auth:
         raw = requests.get(url, headers={'Authorization': auth})
-    if params:
+    elif params:
         raw = requests.get(url, params=params)
     else:
         raw = requests.get(url)
