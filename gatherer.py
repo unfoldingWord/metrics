@@ -297,7 +297,7 @@ if __name__ == "__main__":
     sendgrid_token = get_env_var('SENDGRID_TOKEN')
     sendgrid_stats = getJSONfromURL(sendgrid_api.format(
                        datetime.datetime.today().strftime('%Y-%m-%d')), auth=sendgrid_token)
-    if sendgrid_stats:
+    if not sendgrid_stats['errors']:
         sendgrid_metrics = sendgrid_stats[0]['stats'][0]['metrics']
         logger.info(sendgrid_metrics)
         push(sendgrid_metrics, prefix="sendgrid")
