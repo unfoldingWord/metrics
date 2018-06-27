@@ -2,6 +2,12 @@
 
 <head>
 <script src="https://p.trellocdn.com/embed.min.js"></script>
+<script>
+  window.onload = function() {
+    var x = 'Last update: ' + document.lastModified;
+    document.getElementById("last_mod").innerHTML = x;
+  };
+</script>
 <style>
       .row {
         display: flex;
@@ -66,4 +72,5 @@
   <li><a href="/okrs/12__Months">12+ Months</a></li>
   <li style="float:right"><a href="https://trello.com/distantshores/home">Trello</a></li>
 </ul>
+<p id="last_mod"></p>
 

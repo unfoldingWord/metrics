@@ -244,8 +244,6 @@ def trelloUpload(html, dest):
     dest += '/index.html'
     html_str = '\n'.join(html)
     output = open('template.html', 'rb').read()
-    output += u'<p>{0}</p>'.format(datetime.datetime.today().strftime(
-                                           '%Y-%m-%d %H:%M')).encode('utf-8')
     output += html_str.encode('utf-8')
     output += b'\n</body>\n</html>'
     s3.Bucket('trello.door43.org').put_object(
