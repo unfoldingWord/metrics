@@ -30,11 +30,12 @@ cols = { '12+ Months': 'one',
          '1 Month': 'four',
        }
 dsm_board_pos = { 'G0WhbXlL': 'one',
-                  'eB7kaK2E': 'two',
-                  'I41yr39N': 'three',
-                  'sA1QqK2i': 'four',
+                  'sA1QqK2i': 'two',
+                  'RAaZkiFR': 'three',
+                  'eB7kaK2E': 'four',
                   'hCY5TVfN': 'five',
-                  'B7SE15xE': 'six'
+                  'I41yr39N': 'six',
+                  'B7SE15xE': 'seven'
                 }
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
@@ -308,7 +309,7 @@ if __name__ == "__main__":
     tparams = {'cards': 'open'}
     tparams['key'] = get_env_var('TRELLO_KEY')
     tparams['token'] = get_env_var('TRELLO_SECRET')
-    dsm_boards = ['G0WhbXlL', 'eB7kaK2E', 'I41yr39N', 'sA1QqK2i', 'hCY5TVfN', 'B7SE15xE']
+    dsm_boards = ['G0WhbXlL', 'sA1QqK2i', 'RAaZkiFR', 'eB7kaK2E', 'hCY5TVfN', 'I41yr39N', 'B7SE15xE']
     board_names = getBoardNames(tparams, dsm_boards)
     board_data = getDSMBoards(tparams, dsm_boards)
     html = trelloAllHtml(board_data, board_names)
