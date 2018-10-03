@@ -16,8 +16,8 @@ devs = [ ('bspidel', 3),
          ('klappy', 0),
          ('RoyalSix', 6),
          ('mannycolon', 6),
-         ('richmahn', 6),
-         ('PhotoNomad0', 3)
+         ('richmahn', 5),
+         ('PhotoNomad0', 5)
        ]
 api_status = { 'complete': 0,
                'in-progress': 1,
