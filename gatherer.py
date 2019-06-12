@@ -75,7 +75,7 @@ def push(metrics, host='localhost', port=8125, prefix=''):
     for k,v in metrics.items():
         stats.gauge(k, v)
 
-def pushGraphite(messages, host='127.0.0.1', port=2003):
+def pushGraphite(messages, host='dash.door43.org', port=2003):
     for m in messages:
         sock = socket.socket()
         sock.connect((host, port))
