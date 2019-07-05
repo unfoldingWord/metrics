@@ -70,7 +70,7 @@ def getJSONfromURL(url, token="", auth="", params=""):
         raw = requests.get(url)
     return raw.json()
 
-def push(metrics, host='localhost', port=8125, prefix=''):
+def push(metrics, host='dash.door43.org', port=8125, prefix=''):
     stats = statsd.StatsClient(host, port, prefix=prefix)
     for k,v in metrics.items():
         stats.gauge(k, v)
@@ -90,9 +90,14 @@ def catalog(gl_codes, metrics={}):
     for x in catalog['languages']:
         for y in x['resources']:
             all_resources += 1
+            # Resources by identifier
             if not 'resources_{}_langs'.format(y['identifier']) in metrics:
                 metrics['resources_{}_langs'.format(y['identifier'])] =0
             metrics['resources_{}_langs'.format(y['identifier'])] +=1
+            # Resources by subject
+            if not 'subject_{}'.format(y['subject']) in metrics:
+                metrics['subject_{}'.format(y['subject'])] =0
+            metrics['subject_{}'.format(y['subject'])] +=1
     metrics['all_resources'] = all_resources
     logger.info(metrics)
     return metrics
