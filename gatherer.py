@@ -8,6 +8,12 @@ import statsd
 import logging
 import requests
 import datetime
+import urllib.request
+import time
+import io
+import requests
+import zipfile
+import pprint  # dump an object, test only.
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -38,12 +44,13 @@ dsm_board_pos = { 'G0WhbXlL': 'one',
                   'B7SE15xE': 'seven'
                 }
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
-issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
-tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
-zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
-sendgrid_api = "https://api.sendgrid.com/v3/stats?start_date={0}"
-d43api_api = "https://api.door43.org/v3/lambda/status"
-trello_api = "https://api.trello.com/1/boards/{0}"
+issues_api     = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
+tasks_api      = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
+zenhub_api     = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
+sendgrid_api   = "https://api.sendgrid.com/v3/stats?start_date={0}"
+d43api_api     = "https://api.door43.org/v3/lambda/status"
+trello_api     = "https://api.trello.com/1/boards/{0}"
+catalog_api    = "https://api.door43.org/v3/catalog.json"
 
 def get_env_var(env_name):
     env_variable = os.getenv(env_name, False)
@@ -82,11 +89,35 @@ def pushGraphite(messages, host='dash.door43.org', port=2003):
         sock.sendall(m.encode('utf-8'))
         sock.close()
 
+def getAlignmentCounts(lc, cdnPath):
+    # Receive language name and cdn path to zip file for language
+    # Return list of projects with numbers of alignments
+    counts = {}
+    if cdnPath.count('.zip') > 0:
+        #logger.info(' getAlignmentCounts: lc: ' + lc + ' cdnPath: ' + cdnPath)
+        response = requests.get(cdnPath)
+        with zipfile.ZipFile(io.BytesIO(response.content)) as theZip:
+            for zipInfo in theZip.infolist():
+                filename = zipInfo.filename
+                #logger.info(' getAlignmentCounts: filename: ' + filename )
+                if filename.count('.usfm') > 0:
+                    with theZip.open(zipInfo) as theFile:
+                        book = str(filename)[-8 : -5].lower()
+                        slug = lc + '_' + book
+                        theText = str(theFile.read())
+                        count = theText.count('\\zaln-s')
+                        if count > 0:
+                            counts[slug] = count
+                            #logger.info(' getAlignmentCounts: filename: ' + filename + ' counts[' + slug + ']: ' + str(counts[slug]))
+    return counts
+
 def catalog(gl_codes, metrics={}):
-    catalog = getJSONfromURL('https://api.door43.org/v3/catalog.json')
+    catalog = getJSONfromURL(catalog_api)
     metrics['total_langs'] = len(catalog['languages'])
     metrics['gls_with_content'] = len([x for x in catalog['languages'] if x['identifier'] in gl_codes])
     all_resources = 0
+    all_bpfs = 0
+    startTime = time.time()
     for x in catalog['languages']:
         for y in x['resources']:
             all_resources += 1
@@ -99,6 +130,55 @@ def catalog(gl_codes, metrics={}):
                 metrics['subject_{}'.format(y['subject'])] =0
             metrics['subject_{}'.format(y['subject'])] +=1
     metrics['all_resources'] = all_resources
+    #logger.info( ' resources: ' + str(all_resources))
+    isTa = False
+    isTn = False
+    isTq = False
+    isTw = False    
+    counts = {}
+    for lang in catalog['languages']:                # look at all the languages
+        lc = lang['identifier']
+        #logger.info( ' catalog: lc: ' + lc )
+        for res in lang['resources']:
+            resource = res['identifier']
+            subject = res['subject']
+            #logger.info( '   catalog: resource: ' + resource )
+            if subject == 'Aligned Bible':
+                for fmt in res['formats']:
+                    cdnPath = fmt['url']
+                    updateCounts = getAlignmentCounts(lc, cdnPath)
+                    #logger.info( '     catalog: lc: ' + lc + ', resource: ' + resource + ' books w/ alignment: ' + str(len(updateCounts)))
+                    if len(updateCounts) > 0:
+                        counts.update(updateCounts)
+            elif resource == 'ta':
+                #logger.info( ' catalog: Found ta for: ' + lc)
+                isTa = True
+            elif resource == 'tn':
+                #logger.info( ' catalog: Found tn for: ' + lc)
+                isTn = True
+            elif resource == 'tq':
+                #logger.info( ' catalog: Found tq for: ' + lc)  
+                isTq = True
+            elif resource == 'tw':  
+                #logger.info( ' catalog: Found tw for: ' + lc)
+                isTw = True
+        # end of language
+        if isTa and isTn and isTq and isTw:   
+            #previousBpfs = all_bpfs
+            #logger.info(' catalog: got all resources for: ' + lc)   
+            for key in counts:
+                if key.find(lc) == 0:
+                    #logger.info(' catalog: key: ' + key)
+                    if counts[key] > 0:        
+                        all_bpfs += 1    
+                        #logger.info(' catalog: Found BP for: ' + key)  
+            #logger.info( ' catalog added: ' + str(all_bpfs - previousBpfs) + ' BPs')
+        isTa = False
+        isTn = False
+        isTq = False
+        isTw = False    
+    logger.info( ' catalog: Elapsed time: ' + str(time.time() - startTime) + ' seconds')                                               
+    metrics['all_bpfs'] = all_bpfs
     logger.info(metrics)
     return metrics
 
@@ -156,6 +236,9 @@ def getAvailableHours(multiplier, metrics={}):
 
 def getMilestoneTimeLeft():
     milestone_json = getJSONfromURL(milestones_api, github_token)
+    pp = pprint.PrettyPrinter()
+    print('      milestone_json: ')
+    pp.pprint(milestone_json)
     endDate = milestone_json[0]['due_on']
     y, m, d = [int(x) for x in endDate.split('T')[0].split('-')]
     return datetime.datetime(y, m, d) - datetime.datetime.today()
@@ -323,3 +406,10 @@ if __name__ == "__main__":
         html = trelloCols(board_data, col, board_names)
         directory = 'okrs/{0}'.format(col.replace(' ', '_').replace('+', '_'))
         trelloUpload(html, directory)
+
+# Retired tests
+#import pprint  # dump an object, test only.
+#pp = pprint.PrettyPrinter()
+#print('       ' + lc + ': ')
+#pp.pprint(counts)
+#myPrint('counts', counts)
