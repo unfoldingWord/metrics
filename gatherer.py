@@ -108,7 +108,8 @@ def getAlignmentCounts(lc, cdnPath):
                         count = theText.count('\\zaln-s')
                         if count > 0:
                             counts[slug] = count
-                            #logger.info(' getAlignmentCounts: filename: ' + filename + ' counts[' + slug + ']: ' + str(counts[slug]))
+                            #if count < 300:
+                            #    logger.info(' getAlignmentCounts: filename: ' + filename + ' counts[' + slug + ']: ' + str(counts[slug]))
     return counts
 
 def catalog(gl_codes, metrics={}):
@@ -165,20 +166,20 @@ def catalog(gl_codes, metrics={}):
         # end of language
         if isTa and isTn and isTq and isTw:   
             #previousBpfs = all_bpfs
-            #logger.info(' catalog: got all resources for: ' + lc)   
+            #logger.info(' catalog: got all resources for: ' + lc + '_' + resource)   
             for key in counts:
                 if key.find(lc) == 0:
                     #logger.info(' catalog: key: ' + key)
                     if counts[key] > 0:        
                         all_bpfs += 1    
                         #logger.info(' catalog: Found BP for: ' + key)  
-            #logger.info( ' catalog added: ' + str(all_bpfs - previousBpfs) + ' BPs')
+            #logger.info( ' catalog: added: ' + str(all_bpfs - previousBpfs) + ' BPs from: ' + key)
         isTa = False
         isTn = False
         isTq = False
         isTw = False    
-    logger.info( ' catalog: Elapsed time: ' + str(time.time() - startTime) + ' seconds')                                               
-    metrics['all_bpfs'] = all_bpfs
+    #logger.info( ' catalog: Elapsed time: ' + str(time.time() - startTime) + ' seconds')                                               
+    metrics['completed_bps'] = all_bpfs
     logger.info(metrics)
     return metrics
 
