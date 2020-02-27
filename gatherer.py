@@ -8,8 +8,6 @@ import statsd
 import logging
 import requests
 import datetime
-import urllib.request
-import time
 import io
 import requests
 import zipfile
@@ -43,13 +41,13 @@ dsm_board_pos = { 'G0WhbXlL': 'one',
                   'B7SE15xE': 'seven'
                 }
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
-issues_api     = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
-tasks_api      = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
-zenhub_api     = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
-sendgrid_api   = "https://api.sendgrid.com/v3/stats?start_date={0}"
-d43api_api     = "https://api.door43.org/v3/lambda/status"
-trello_api     = "https://api.trello.com/1/boards/{0}"
-catalog_api    = "https://api.door43.org/v3/catalog.json"
+issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
+tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
+zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
+sendgrid_api = "https://api.sendgrid.com/v3/stats?start_date={0}"
+d43api_api = "https://api.door43.org/v3/lambda/status"
+trello_api = "https://api.trello.com/1/boards/{0}"
+catalog_api = "https://api.door43.org/v3/catalog.json"
 
 def get_env_var(env_name):
     env_variable = os.getenv(env_name, False)
@@ -217,9 +215,6 @@ def getAvailableHours(multiplier, metrics={}):
 
 def getMilestoneTimeLeft():
     milestone_json = getJSONfromURL(milestones_api, github_token)
-    pp = pprint.PrettyPrinter()
-    print('      milestone_json: ')
-    pp.pprint(milestone_json)
     endDate = milestone_json[0]['due_on']
     y, m, d = [int(x) for x in endDate.split('T')[0].split('-')]
     return datetime.datetime(y, m, d) - datetime.datetime.today()
@@ -388,9 +383,3 @@ if __name__ == "__main__":
         directory = 'okrs/{0}'.format(col.replace(' ', '_').replace('+', '_'))
         trelloUpload(html, directory)
 
-# Retired tests
-#import pprint  # dump an object, test only.
-#pp = pprint.PrettyPrinter()
-#print('       ' + lc + ': ')
-#pp.pprint(counts)
-#myPrint('counts', counts)
