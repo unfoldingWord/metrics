@@ -13,7 +13,6 @@ import time
 import io
 import requests
 import zipfile
-import pprint  # dump an object, test only.
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -94,12 +93,10 @@ def getAlignmentCounts(lc, cdnPath):
     # Return list of projects with numbers of alignments
     counts = {}
     if cdnPath.count('.zip') > 0:
-        #logger.info(' getAlignmentCounts: lc: ' + lc + ' cdnPath: ' + cdnPath)
         response = requests.get(cdnPath)
         with zipfile.ZipFile(io.BytesIO(response.content)) as theZip:
             for zipInfo in theZip.infolist():
                 filename = zipInfo.filename
-                #logger.info(' getAlignmentCounts: filename: ' + filename )
                 if filename.count('.usfm') > 0:
                     with theZip.open(zipInfo) as theFile:
                         book = str(filename)[-8 : -5].lower()
@@ -108,8 +105,6 @@ def getAlignmentCounts(lc, cdnPath):
                         count = theText.count('\\zaln-s')
                         if count > 0:
                             counts[slug] = count
-                            #if count < 300:
-                            #    logger.info(' getAlignmentCounts: filename: ' + filename + ' counts[' + slug + ']: ' + str(counts[slug]))
     return counts
 
 def catalog(gl_codes, metrics={}):
@@ -118,7 +113,6 @@ def catalog(gl_codes, metrics={}):
     metrics['gls_with_content'] = len([x for x in catalog['languages'] if x['identifier'] in gl_codes])
     all_resources = 0
     all_bpfs = 0
-    startTime = time.time()
     for x in catalog['languages']:
         for y in x['resources']:
             all_resources += 1
@@ -131,7 +125,6 @@ def catalog(gl_codes, metrics={}):
                 metrics['subject_{}'.format(y['subject'])] =0
             metrics['subject_{}'.format(y['subject'])] +=1
     metrics['all_resources'] = all_resources
-    #logger.info( ' resources: ' + str(all_resources))
     isTa = False
     isTn = False
     isTq = False
@@ -139,46 +132,33 @@ def catalog(gl_codes, metrics={}):
     counts = {}
     for lang in catalog['languages']:                # look at all the languages
         lc = lang['identifier']
-        #logger.info( ' catalog: lc: ' + lc )
         for res in lang['resources']:
             resource = res['identifier']
             subject = res['subject']
-            #logger.info( '   catalog: resource: ' + resource )
             if subject == 'Aligned Bible':
                 for fmt in res['formats']:
                     cdnPath = fmt['url']
                     updateCounts = getAlignmentCounts(lc, cdnPath)
-                    #logger.info( '     catalog: lc: ' + lc + ', resource: ' + resource + ' books w/ alignment: ' + str(len(updateCounts)))
                     if len(updateCounts) > 0:
                         counts.update(updateCounts)
             elif resource == 'ta':
-                #logger.info( ' catalog: Found ta for: ' + lc)
                 isTa = True
             elif resource == 'tn':
-                #logger.info( ' catalog: Found tn for: ' + lc)
                 isTn = True
             elif resource == 'tq':
-                #logger.info( ' catalog: Found tq for: ' + lc)  
                 isTq = True
             elif resource == 'tw':  
-                #logger.info( ' catalog: Found tw for: ' + lc)
                 isTw = True
         # end of language
         if isTa and isTn and isTq and isTw:   
-            #previousBpfs = all_bpfs
-            #logger.info(' catalog: got all resources for: ' + lc + '_' + resource)   
             for key in counts:
                 if key.find(lc) == 0:
-                    #logger.info(' catalog: key: ' + key)
                     if counts[key] > 0:        
                         all_bpfs += 1    
-                        #logger.info(' catalog: Found BP for: ' + key)  
-            #logger.info( ' catalog: added: ' + str(all_bpfs - previousBpfs) + ' BPs from: ' + key)
         isTa = False
         isTn = False
         isTq = False
         isTw = False    
-    #logger.info( ' catalog: Elapsed time: ' + str(time.time() - startTime) + ' seconds')                                               
     metrics['completed_bps'] = all_bpfs
     logger.info(metrics)
     return metrics
