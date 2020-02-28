@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: Publish to Docker Hub
-      uses: elgohr/Publish-Docker-Github-Action@2
+      uses: elgohr/Publish-Docker-Github-Action@master
       with:
         name: unfoldingword/metrics
         username: ${{ secrets.DOCKER_USERNAME }}
