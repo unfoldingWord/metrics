@@ -123,12 +123,12 @@ def catalog(gl_codes, metrics={}):
                 metrics['subject_{}'.format(y['subject'])] =0
             metrics['subject_{}'.format(y['subject'])] +=1
     metrics['all_resources'] = all_resources
-    isTa = False
-    isTn = False
-    isTq = False
-    isTw = False    
     counts = {}
     for lang in catalog['languages']:                # look at all the languages
+        isTa = False
+        isTn = False
+        isTq = False
+        isTw = False    
         lc = lang['identifier']
         for res in lang['resources']:
             resource = res['identifier']
@@ -153,10 +153,6 @@ def catalog(gl_codes, metrics={}):
                 if key.find(lc) == 0:
                     if counts[key] > 0:        
                         all_bpfs += 1    
-        isTa = False
-        isTn = False
-        isTq = False
-        isTw = False    
     metrics['completed_bps'] = all_bpfs
     logger.info(metrics)
     return metrics
