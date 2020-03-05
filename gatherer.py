@@ -8,6 +8,9 @@ import statsd
 import logging
 import requests
 import datetime
+import io
+import requests
+import zipfile
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -44,6 +47,7 @@ zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token=
 sendgrid_api = "https://api.sendgrid.com/v3/stats?start_date={0}"
 d43api_api = "https://api.door43.org/v3/lambda/status"
 trello_api = "https://api.trello.com/1/boards/{0}"
+catalog_api = "https://api.door43.org/v3/catalog.json"
 
 def get_env_var(env_name):
     env_variable = os.getenv(env_name, False)
@@ -82,11 +86,31 @@ def pushGraphite(messages, host='dash.door43.org', port=2003):
         sock.sendall(m.encode('utf-8'))
         sock.close()
 
+def getAlignmentCounts(lc, cdnPath):
+    # Receive language name and cdn path to zip file for language
+    # Return list of projects with numbers of alignments
+    counts = {}
+    if cdnPath.count('.zip') > 0:
+        response = requests.get(cdnPath)
+        with zipfile.ZipFile(io.BytesIO(response.content)) as theZip:
+            for zipInfo in theZip.infolist():
+                filename = zipInfo.filename
+                if filename.count('.usfm') > 0:
+                    with theZip.open(zipInfo) as theFile:
+                        book = str(filename)[-8 : -5].lower()
+                        slug = lc + '_' + book
+                        theText = str(theFile.read())
+                        count = theText.count('\\zaln-s')
+                        if count > 0:
+                            counts[slug] = count
+    return counts
+
 def catalog(gl_codes, metrics={}):
-    catalog = getJSONfromURL('https://api.door43.org/v3/catalog.json')
+    catalog = getJSONfromURL(catalog_api)
     metrics['total_langs'] = len(catalog['languages'])
     metrics['gls_with_content'] = len([x for x in catalog['languages'] if x['identifier'] in gl_codes])
     all_resources = 0
+    all_bpfs = 0
     for x in catalog['languages']:
         for y in x['resources']:
             all_resources += 1
@@ -99,6 +123,37 @@ def catalog(gl_codes, metrics={}):
                 metrics['subject_{}'.format(y['subject'])] =0
             metrics['subject_{}'.format(y['subject'])] +=1
     metrics['all_resources'] = all_resources
+    counts = {}
+    for lang in catalog['languages']:                # look at all the languages
+        isTa = False
+        isTn = False
+        isTq = False
+        isTw = False    
+        lc = lang['identifier']
+        for res in lang['resources']:
+            resource = res['identifier']
+            subject = res['subject']
+            if subject == 'Aligned Bible':
+                for fmt in res['formats']:
+                    cdnPath = fmt['url']
+                    updateCounts = getAlignmentCounts(lc, cdnPath)
+                    if len(updateCounts) > 0:
+                        counts.update(updateCounts)
+            elif resource == 'ta':
+                isTa = True
+            elif resource == 'tn':
+                isTn = True
+            elif resource == 'tq':
+                isTq = True
+            elif resource == 'tw':  
+                isTw = True
+        # end of language
+        if isTa and isTn and isTq and isTw:   
+            for key in counts:
+                if key.find(lc) == 0:
+                    if counts[key] > 0:        
+                        all_bpfs += 1    
+    metrics['completed_bps'] = all_bpfs
     logger.info(metrics)
     return metrics
 
@@ -323,3 +378,4 @@ if __name__ == "__main__":
         html = trelloCols(board_data, col, board_names)
         directory = 'okrs/{0}'.format(col.replace(' ', '_').replace('+', '_'))
         trelloUpload(html, directory)
+
