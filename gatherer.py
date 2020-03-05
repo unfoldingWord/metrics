@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import json
-import boto3
 import socket
 import statsd
 import logging
@@ -27,26 +26,12 @@ api_status = { 'complete': 0,
                'incomplete': 1,
                'error': 2,
              }
-cols = { '12+ Months': 'one',
-         '6 Months': 'two',
-         '3 Months': 'three',
-         '1 Month': 'four',
-       }
-dsm_board_pos = { 'G0WhbXlL': 'one',
-                  'sA1QqK2i': 'two',
-                  'RAaZkiFR': 'three',
-                  'eB7kaK2E': 'four',
-                  'hCY5TVfN': 'five',
-                  'I41yr39N': 'six',
-                  'B7SE15xE': 'seven'
-                }
 milestones_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones"
 issues_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}"
 tasks_api = "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}"
 zenhub_api = "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}"
 sendgrid_api = "https://api.sendgrid.com/v3/stats?start_date={0}"
 d43api_api = "https://api.door43.org/v3/lambda/status"
-trello_api = "https://api.trello.com/1/boards/{0}"
 catalog_api = "https://api.door43.org/v3/catalog.json"
 
 def get_env_var(env_name):
@@ -250,71 +235,6 @@ def d43api(status, metrics={}):
     logger.info(metrics)
     return metrics
 
-def getDSMBoards(tparams, dsm_boards):
-    # Returns a dictionary of the card data in the boards
-    trello_data = {}
-    for board in dsm_boards:
-        trello_data[board] = getJSONfromURL(trello_api.format(board) + '/lists', params=tparams)
-    return trello_data
-
-def getBoardNames(tparams, boards):
-    tparams['fields'] = 'name'
-    board_names = {}
-    for b in boards:
-        r = getJSONfromURL(trello_api.format(b), params=tparams)
-        board_names[b] = r['name']
-    return board_names
-
-def trelloAllHtml(boards, board_names):
-    html_data = []
-    for b in boards.keys():
-        html_data.append('<h2>#{0}</h2>'.format(board_names[b]))
-        html_data.append('<div class="row">')
-        for lane in boards[b]:
-            if lane['name'] not in cols: continue
-            html_data.append('  <div class="{0}"><h3>{1}</h3>'.format(
-                                                 cols[lane['name']], lane['name']))
-            for card in lane['cards']:
-                html_data.append('    <blockquote class="trello-card-compact">')
-                html_data.append('      <a href="{0}">Card</a>'.format(card['shortUrl']))
-                html_data.append('    </blockquote>')
-            html_data.append('  </div>')
-        html_data.append('</div>')
-        html_data.append('<hr>')
-    html_data.pop()
-    return html_data
-
-def trelloCols(boards, col, board_names):
-    html_data = []
-    html_data.append('<h2>DSM OKRs: {0}</h2>'.format(col))
-    html_data.append('<div class="row">')
-    for b in board_names.keys():
-        for lane in boards[b]:
-            if lane['name'] != col: continue
-            html_data.append('  <div class="{0}"><h3>{1}</h3>'.format(
-                                            dsm_board_pos[b], board_names[b]))
-            for card in lane['cards']:
-                html_data.append('    <blockquote class="trello-card-compact">')
-                html_data.append('      <a href="{0}">Card</a>'.format(card['shortUrl']))
-                html_data.append('    </blockquote>')
-            html_data.append('  </div>')
-    html_data.append('</div>')
-    #html_data.pop()
-    return html_data
-
-def trelloUpload(html, dest):
-    s3 = boto3.resource('s3', 'us-west-2')
-    dest += '/index.html'
-    html_str = '\n'.join(html)
-    output = open('template.html', 'rb').read()
-    output += html_str.encode('utf-8')
-    output += b'\n</body>\n</html>'
-    s3.Bucket('trello.door43.org').put_object(
-                         Body=output,
-                         ContentType='text/html',
-                         CacheControl='max-age=60',
-                         Key=dest)
-
 if __name__ == "__main__":
     logging.basicConfig()
     status = getJSONfromURL(d43api_api)
@@ -364,18 +284,3 @@ if __name__ == "__main__":
         sendgrid_metrics = sendgrid_stats[0]['stats'][0]['metrics']
         logger.info(sendgrid_metrics)
         push(sendgrid_metrics, prefix="sendgrid")
-
-    # Trello stats
-    tparams = {'cards': 'open'}
-    tparams['key'] = get_env_var('TRELLO_KEY')
-    tparams['token'] = get_env_var('TRELLO_SECRET')
-    dsm_boards = ['G0WhbXlL', 'sA1QqK2i', 'RAaZkiFR', 'eB7kaK2E', 'hCY5TVfN', 'I41yr39N', 'B7SE15xE']
-    board_names = getBoardNames(tparams, dsm_boards)
-    board_data = getDSMBoards(tparams, dsm_boards)
-    html = trelloAllHtml(board_data, board_names)
-    trelloUpload(html, 'okrs')
-    for col in cols:
-        html = trelloCols(board_data, col, board_names)
-        directory = 'okrs/{0}'.format(col.replace(' ', '_').replace('+', '_'))
-        trelloUpload(html, directory)
-
