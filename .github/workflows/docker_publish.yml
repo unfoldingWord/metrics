@@ -16,7 +16,7 @@ jobs:
           BRANCH=$(git rev-parse --abbrev-ref HEAD)
           echo "BRANCH: ${BRANCH}"
           DOCKER_TAGS="${BRANCH},latest"
-          echo "::set-env name=DOCKER_TAGS::$DOCKER_TAGS"
+          echo "DOCKER_TAGS=${DOCKER_TAGS}" >> $GITHUB_ENV
 
       - name: Publish Docker Github Action
         uses: elgohr/Publish-Docker-Github-Action@master
