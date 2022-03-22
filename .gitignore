@@ -1,3 +1,7 @@
+# Misc
+lab/
+
+# Build
 *.egg-info
 *.iml
 build/
