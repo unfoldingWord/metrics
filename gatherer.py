@@ -118,11 +118,14 @@ class UfwMetrics:
         # Return list of projects with numbers of alignments
         counts = {}
         if cdn_path.count('.zip') > 0:
+            # Get the zip file
             response = requests.get(cdn_path)
             with zipfile.ZipFile(io.BytesIO(response.content)) as the_zip:
+                # iterate over content of zip file
                 for zip_info in the_zip.infolist():
                     filename = zip_info.filename
                     if filename.count('.usfm') > 0:
+                        # This is a USFM file. Open it
                         with the_zip.open(zip_info) as the_file:
                             book = str(filename)[-8: -5].lower()
                             slug = lc + '_' + book
@@ -130,47 +133,61 @@ class UfwMetrics:
                             count = the_text.count('\\zaln-s')
                             if count > 0:
                                 counts[slug] = count
+
         return counts
 
     def catalog(self, gl_codes, metrics=None):
         if not metrics:
             metrics = dict()
 
+        # Fetch the data
         catalog_api = self.get_api_url("catalog_api")
-
         catalog = self.get_json_from_url(catalog_api)
+
+        # Metric: Total number of languages in the Catalog
         metrics['total_langs'] = len(catalog['languages'])
+
+        # Metric: All GL's with content
         metrics['gls_with_content'] = len([x for x in catalog['languages'] if x['identifier'] in gl_codes])
+
+        # Metric: All resources
         all_resources = 0
-        all_bpfs = 0
-        for x in catalog['languages']:
-            for y in x['resources']:
+        for language in catalog['languages']:
+            for resource in language['resources']:
                 all_resources += 1
+
                 # Resources by identifier
-                if not 'resources_{}_langs'.format(y['identifier']) in metrics:
-                    metrics['resources_{}_langs'.format(y['identifier'])] = 0
-                metrics['resources_{}_langs'.format(y['identifier'])] += 1
+                if not 'resources_{}_langs'.format(resource['identifier']) in metrics:
+                    metrics['resources_{}_langs'.format(resource['identifier'])] = 0
+                metrics['resources_{}_langs'.format(resource['identifier'])] += 1
+
                 # Resources by subject
-                if not 'subject_{}'.format(y['subject']) in metrics:
-                    metrics['subject_{}'.format(y['subject'])] = 0
-                metrics['subject_{}'.format(y['subject'])] += 1
+                if not 'subject_{}'.format(resource['subject']) in metrics:
+                    metrics['subject_{}'.format(resource['subject'])] = 0
+                metrics['subject_{}'.format(resource['subject'])] += 1
+
         metrics['all_resources'] = all_resources
-        counts = {}
-        for lang in catalog['languages']:  # look at all the languages
+
+        # Metric: Completed BP's (GL's and OLs)
+        all_bpfs = 0
+        for lang in catalog['languages']:  # Iterate over all the languages
             is_ta = False
             is_tn = False
             is_tq = False
             is_tw = False
             lc = lang['identifier']
-            for res in lang['resources']:
+            alignment_counts = {}
+
+            for res in lang['resources']:  # Iterate over all the resources in this language
                 resource = res['identifier']
                 subject = res['subject']
                 if subject == 'Aligned Bible':
                     for fmt in res['formats']:
+                        # Get count of aligned data
                         cdn_path = fmt['url']
                         update_counts = self.get_alignment_counts(lc, cdn_path)
                         if len(update_counts) > 0:
-                            counts.update(update_counts)
+                            alignment_counts.update(update_counts)
                 elif resource == 'ta':
                     is_ta = True
                 elif resource == 'tn':
@@ -180,11 +197,20 @@ class UfwMetrics:
                 elif resource == 'tw':
                     is_tw = True
             # end of language
+
+            # If this language has a tA, a tN, a tQ, and a tW resource,
+            # then, for every aligned book in the Aligned Bible for this language (contains the '\\zaln-s' tag),
+            # we increment the number of completed Book Packages.
             if is_ta and is_tn and is_tq and is_tw:
-                for key in counts:
-                    if key.find(lc) == 0:
-                        if counts[key] > 0:
-                            all_bpfs += 1
+                bp_per_language = len(alignment_counts)
+                all_bpfs += bp_per_language
+
+                if bp_per_language > 0:
+                    if lc in gl_codes:
+                        metrics['completed_bps_per_language.gl.{}'.format(lc)] = bp_per_language
+                    else:
+                        metrics['completed_bps_per_language.ol.{}'.format(lc)] = bp_per_language
+
         metrics['completed_bps'] = all_bpfs
 
         self.logger.info(metrics)
