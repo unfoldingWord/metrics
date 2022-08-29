@@ -5,10 +5,9 @@ import socket
 import statsd
 import logging
 import datetime
-import io
 import requests
-import zipfile
 from dotenv import load_dotenv
+import json
 
 # in develop only?
 load_dotenv()
@@ -36,7 +35,7 @@ class UfwMetrics:
                 sys.exit(1)
 
     def get_devs(self):
-        # TODO: Is this list complete?
+        # TODO: Is this list complete? Probably this is not even relevant anymore.
 
         devs = [('bspidel', 3),
                 ('klappy', 0),
@@ -51,12 +50,10 @@ class UfwMetrics:
     def get_api_url(self, api_id):
         dict_apis = {
             "milestones_api": "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones",
-            # "issues_api": "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?milestone={0}",
             "tasks_api": "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}",
             "zenhub_api": "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}",
             "sendgrid_api": "https://api.sendgrid.com/v3/stats?start_date={0}",
             "d43api_api": "https://api.door43.org/v3/lambda/status",
-            "catalog_api": "https://api.door43.org/v3/catalog.json",
             "release_api": 'https://api.github.com/repos/unfoldingWord-dev/{0}/releases'
         }
 
@@ -98,6 +95,7 @@ class UfwMetrics:
         return raw.json()
 
     def push_to_statsd(self, metrics, port=8125, prefix=''):
+        return
         host = self.get_env_var("STATSD_HOST")
 
         stats = statsd.StatsClient(host, port, prefix=prefix)
@@ -105,6 +103,7 @@ class UfwMetrics:
             stats.gauge(k, v)
 
     def push_to_graphite(self, messages, port=2003):
+        return
         host = self.get_env_var("GRAPHITE_HOST")
 
         for m in messages:
@@ -113,103 +112,113 @@ class UfwMetrics:
             sock.sendall(m.encode('utf-8'))
             sock.close()
 
-    def get_alignment_counts(self, lc, cdn_path):
-        # Receive language name and cdn path to zip file for language
-        # Return list of projects with numbers of alignments
-        counts = {}
-        if cdn_path.count('.zip') > 0:
-            # Get the zip file
-            response = requests.get(cdn_path)
-            with zipfile.ZipFile(io.BytesIO(response.content)) as the_zip:
-                # iterate over content of zip file
-                for zip_info in the_zip.infolist():
-                    filename = zip_info.filename
-                    if filename.count('.usfm') > 0:
-                        # This is a USFM file. Open it
-                        with the_zip.open(zip_info) as the_file:
-                            book = str(filename)[-8: -5].lower()
-                            slug = lc + '_' + book
-                            the_text = str(the_file.read())
-                            count = the_text.count('\\zaln-s')
-                            if count > 0:
-                                counts[slug] = count
+    def catalog_next(self):
+        url = 'https://git.door43.org/api/catalog/v5/search'
+        catalog_data = json.loads(requests.get(url).text)
 
-        return counts
+        lst_gls = list()
+        dict_identifiers = dict()
+        dict_subjects = dict()
+        dict_bp_collector = dict()
 
-    def catalog(self, gl_codes, metrics=None):
-        if not metrics:
-            metrics = dict()
+        lst_owner_ignore = ["test_org", "test_org2", "test_org3"]
 
-        # Fetch the data
-        catalog_api = self.get_api_url("catalog_api")
-        catalog = self.get_json_from_url(catalog_api)
-
-        # Metric: Total number of languages in the Catalog
-        metrics['total_langs'] = len(catalog['languages'])
-
-        # Metric: All GL's with content
-        metrics['gls_with_content'] = len([x for x in catalog['languages'] if x['identifier'] in gl_codes])
-
-        # Metric: All resources
         all_resources = 0
-        for language in catalog['languages']:
-            for resource in language['resources']:
-                all_resources += 1
+        for item in catalog_data["data"]:
 
-                # Resources by identifier
-                if not 'resources_{}_langs'.format(resource['identifier']) in metrics:
-                    metrics['resources_{}_langs'.format(resource['identifier'])] = 0
-                metrics['resources_{}_langs'.format(resource['identifier'])] += 1
+            if item["owner"] in lst_owner_ignore:
+                # Skip items from 'junk' owners ('test' or otherwise)
+                continue
 
-                # Resources by subject
-                if not 'subject_{}'.format(resource['subject']) in metrics:
-                    metrics['subject_{}'.format(resource['subject'])] = 0
-                metrics['subject_{}'.format(resource['subject'])] += 1
+            all_resources += 1
 
-        metrics['all_resources'] = all_resources
+            language = item["language"]
 
-        # Metric: Completed BP's (GL's and OLs)
+            if language not in lst_gls and item["language_is_gl"] is True:
+                lst_gls.append(language)
+
+            # 1) Resources by identifier
+            lst_identifier = item["name"].lower().split("_")
+            if len(lst_identifier) == 2:
+                identifier = lst_identifier[1]
+            else:
+                identifier = lst_identifier[0]
+
+            if identifier not in dict_identifiers:
+                dict_identifiers[identifier] = 1
+            else:
+                dict_identifiers[identifier] += 1
+
+            # 2) Resources by subject
+            subject = item["subject"]
+            if subject not in dict_subjects:
+                dict_subjects[subject] = 1
+            else:
+                dict_subjects[subject] += 1
+
+            # 3) Book package fact collecting
+            if language not in dict_bp_collector:
+                dict_bp_collector[language] = {"has_ta": False,
+                                               "has_tw": False,
+                                               "has_tn": False,
+                                               "has_tq": False,
+                                               "aligned_books": list()
+                                               }
+
+            # 3a) GL or not
+            dict_bp_collector[language]["is_gl"] = item["language_is_gl"]
+
+            # 3b) Check for Resources
+            if identifier == "ta":
+                dict_bp_collector[language]["has_ta"] = True
+            elif identifier == "tw":
+                dict_bp_collector[language]["has_tw"] = True
+            elif identifier == "tn":
+                dict_bp_collector[language]["has_tn"] = True
+            elif identifier == "tq":
+                dict_bp_collector[language]["has_tq"] = True
+
+            # 3c) Check for Aligned Bible
+            if item["subject"] == "Aligned Bible":
+
+                for book in item["alignment_counts"]:
+                    if book not in dict_bp_collector[language]["aligned_books"]:
+                        if item["alignment_counts"][book] > 0:
+                            dict_bp_collector[language]["aligned_books"].append(book)
+
+        # 4) Building the actual metrics dictionary
+        metrics = dict()
+
+        metrics["total_langs"] = len(dict_bp_collector)
+        metrics["gls_with_content"] = len(lst_gls)
+
+        # 4a) Resources by identifier
+        for identifier in dict_identifiers:
+            metrics['resources_{}_langs'.format(identifier)] = dict_identifiers[identifier]
+
+        # 4b) Resources by subject
+        for subject in dict_subjects:
+            metrics['subject_{}'.format(subject)] = dict_subjects[subject]
+
+        metrics["all_resources"] = len(catalog_data["data"])
+
+        # 4c) Book package counting
         all_bpfs = 0
-        for lang in catalog['languages']:  # Iterate over all the languages
-            is_ta = False
-            is_tn = False
-            is_tq = False
-            is_tw = False
-            lc = lang['identifier']
-            alignment_counts = {}
-
-            for res in lang['resources']:  # Iterate over all the resources in this language
-                resource = res['identifier']
-                subject = res['subject']
-                if subject == 'Aligned Bible':
-                    for fmt in res['formats']:
-                        # Get count of aligned data
-                        cdn_path = fmt['url']
-                        update_counts = self.get_alignment_counts(lc, cdn_path)
-                        if len(update_counts) > 0:
-                            alignment_counts.update(update_counts)
-                elif resource == 'ta':
-                    is_ta = True
-                elif resource == 'tn':
-                    is_tn = True
-                elif resource == 'tq':
-                    is_tq = True
-                elif resource == 'tw':
-                    is_tw = True
-            # end of language
-
+        for language in dict_bp_collector:
+            item = dict_bp_collector[language]
             # If this language has a tA, a tN, a tQ, and a tW resource,
             # then, for every aligned book in the Aligned Bible for this language (contains the '\\zaln-s' tag),
             # we increment the number of completed Book Packages.
-            if is_ta and is_tn and is_tq and is_tw:
-                bp_per_language = len(alignment_counts)
-                all_bpfs += bp_per_language
+            if item["has_ta"] and item["has_tn"] and item["has_tq"] and item["has_tw"]:
+                bp_per_language = len(item["aligned_books"])
 
                 if bp_per_language > 0:
-                    if lc in gl_codes:
-                        metrics['completed_bps_per_language.gl.{}'.format(lc)] = bp_per_language
+                    all_bpfs += bp_per_language
+
+                    if item["is_gl"] is True:
+                        metrics['completed_bps_per_language.gl.{}'.format(language)] = bp_per_language
                     else:
-                        metrics['completed_bps_per_language.ol.{}'.format(lc)] = bp_per_language
+                        metrics['completed_bps_per_language.ol.{}'.format(language)] = bp_per_language
 
         metrics['completed_bps'] = all_bpfs
 
@@ -227,7 +236,7 @@ class UfwMetrics:
         metrics['langs_private_use'] = len([x for x in langnames if '-x-' in x['lc']])
 
         self.logger.info(metrics)
-        return metrics, gl_codes
+        return metrics
 
     def github(self, metrics=None):
         if not metrics:
@@ -242,9 +251,13 @@ class UfwMetrics:
                 if 'assets' in entry:
                     for asset in entry['assets']:
                         metrics['software_{0}'.format(x)] += asset['download_count']
+
         self.logger.info(metrics)
         return metrics
 
+    # TODO: this needs to be implemented in reality.
+    # I assume this should track Downloads. Can't find any information
+    # with regards to this in the Play Store Console!
     def play(self, metrics=None):
         if not metrics:
             metrics = dict()
@@ -252,6 +265,7 @@ class UfwMetrics:
         metrics['ts-android_total'] = 1737
         metrics['uw-android_total'] = 1411
         metrics['tk-android_total'] = 724
+
         self.logger.info(metrics)
         return metrics
 
@@ -353,7 +367,7 @@ class UfwMetrics:
 
     def gather(self):
 
-        # D43 API metrics
+        # # D43 API metrics
         d43api_api = self.get_api_url("d43api_api")
 
         status = self.get_json_from_url(d43api_api)
@@ -361,10 +375,12 @@ class UfwMetrics:
         self.push_to_statsd(status_metrics, prefix="door43_api")
 
         # Td metrics
-        td_metrics, gl_codes = self.td()
+        td_metrics = self.td()
         self.push_to_statsd(td_metrics, prefix="td")
-        catalog_metrics = self.catalog(gl_codes)
-        self.push_to_statsd(catalog_metrics, prefix="door43_catalog")
+
+        # Catalog
+        catalog_metrics = self.catalog_next()
+        self.push_to_statsd(catalog_metrics, prefix="catalog_next")
 
         # Git metrics
         # Only get these periodically, to stay under our rate limit
@@ -411,6 +427,7 @@ class UfwMetrics:
 
         sendgrid_stats = self.get_json_from_url(sendgrid_api.format(
             datetime.datetime.today().strftime('%Y-%m-%d')), auth=sendgrid_token)
+
         if type(sendgrid_stats) == list:
             sendgrid_metrics = sendgrid_stats[0]['stats'][0]['metrics']
             self.logger.info(sendgrid_metrics)
