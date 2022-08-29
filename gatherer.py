@@ -95,7 +95,6 @@ class UfwMetrics:
         return raw.json()
 
     def push_to_statsd(self, metrics, port=8125, prefix=''):
-        return
         host = self.get_env_var("STATSD_HOST")
 
         stats = statsd.StatsClient(host, port, prefix=prefix)
@@ -103,7 +102,6 @@ class UfwMetrics:
             stats.gauge(k, v)
 
     def push_to_graphite(self, messages, port=2003):
-        return
         host = self.get_env_var("GRAPHITE_HOST")
 
         for m in messages:
