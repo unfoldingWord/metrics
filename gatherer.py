@@ -186,23 +186,42 @@ class UfwMetrics:
 
         metrics["all_resources"] = len(catalog_data["data"])
 
-        # 4c) Book package counting
+        # 4c) Book (package) counting
         all_bpfs = 0
         for language in dict_bp_collector:
             item = dict_bp_collector[language]
+            books_per_language = len(item["aligned_books"])
+
+            # a) Book Package counting
             # If this language has a tA, a tN, a tQ, and a tW resource,
             # then, for every aligned book in the Aligned Bible for this language (contains the '\\zaln-s' tag),
             # we increment the number of completed Book Packages.
             if item["has_ta"] and item["has_tn"] and item["has_tq"] and item["has_tw"]:
-                bp_per_language = len(item["aligned_books"])
-
-                if bp_per_language > 0:
-                    all_bpfs += bp_per_language
+                if books_per_language > 0:
+                    all_bpfs += books_per_language
 
                     if item["is_gl"] is True:
-                        metrics['completed_bps_per_language.gl.{}'.format(language)] = bp_per_language
+                        metrics['completed_bps_per_language.gl.{}'.format(language)] = books_per_language
                     else:
-                        metrics['completed_bps_per_language.ol.{}'.format(language)] = bp_per_language
+                        metrics['completed_bps_per_language.ol.{}'.format(language)] = books_per_language
+
+            # b) Book counting
+            if item["is_gl"] is True:
+                if 'completed_books.gl' not in metrics:
+                    metrics['completed_books.gl'] = books_per_language
+                else:
+                    metrics['completed_books.gl'] += books_per_language
+            else:
+                if 'completed_books.ol' not in metrics:
+                    metrics['completed_books.ol'] = books_per_language
+                else:
+                    metrics['completed_books.ol'] += books_per_language
+
+            for book in item["aligned_books"]:
+                if "completed_books.book." + book not in metrics:
+                    metrics["completed_books.book." + book] = 1
+                else:
+                    metrics["completed_books.book." + book] += 1
 
         metrics['completed_bps'] = all_bpfs
 
