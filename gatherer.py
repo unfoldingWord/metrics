@@ -34,23 +34,9 @@ class UfwMetrics:
                 self.logger.warning('Environment variable {0} not found.'.format(env_var))
                 sys.exit(1)
 
-    def get_devs(self):
-        # TODO: Is this list complete? Probably this is not even relevant anymore.
-
-        devs = [('bspidel', 3),
-                ('klappy', 0),
-                ('RoyalSix', 6),
-                ('mannycolon', 6),
-                ('richmahn', 5),
-                ('PhotoNomad0', 5)
-                ]
-
-        return devs
-
     def get_api_url(self, api_id):
         dict_apis = {
             "milestones_api": "https://api.github.com/repos/unfoldingWord-dev/translationCore/milestones",
-            "tasks_api": "https://api.github.com/repos/unfoldingWord-dev/translationCore/issues?labels=Task&page={0}",
             "zenhub_api": "https://api.zenhub.io/p1/repositories/65028237/board?access_token={0}",
             "sendgrid_api": "https://api.sendgrid.com/v3/stats?start_date={0}",
             "d43api_api": "https://api.door43.org/v3/lambda/status",
@@ -253,7 +239,7 @@ class UfwMetrics:
         self.logger.info(metrics)
         return metrics
 
-    # TODO: this needs to be implemented in reality.
+    # TODO: this either needs to be implemented seriously, or removed altogether
     # I assume this should track Downloads. Can't find any information
     # with regards to this in the Play Store Console!
     def play(self, metrics=None):
@@ -265,67 +251,6 @@ class UfwMetrics:
         metrics['tk-android_total'] = 724
 
         self.logger.info(metrics)
-        return metrics
-
-    def get_hours_remaining(self, title):
-        number = title.split()[0].strip('[]')
-        try:
-            hours = int(number)
-        except ValueError:
-            hours = 0
-
-        return hours
-
-    def get_days_remaining(self, total_time_left):
-        # Subtract 2 days because of how the milestone records the due date
-        days_left = total_time_left.days
-        if days_left < 3:
-            return 0
-        if days_left <= 8:
-            return days_left - 2
-        if days_left > 8:
-            return days_left - 4
-
-    # @TODO: this whole check possibly can be removed. All information always returns 0.
-    def get_available_hours(self, multiplier, metrics=None):
-        if not metrics:
-            metrics = dict()
-
-        devs = self.get_devs()
-
-        for dev in devs:
-            metrics['hours_avail_{0}'.format(dev[0])] = (dev[1] * multiplier)
-
-        return metrics
-
-    def get_milestone_time_left(self, github_token):
-        milestones_api = self.get_api_url("milestones_api")
-
-        milestone_json = self.get_json_from_url(milestones_api, github_token)
-        end_date = milestone_json[0]['due_on']
-        y, m, d = [int(x) for x in end_date.split('T')[0].split('-')]
-        return datetime.datetime(y, m, d) - datetime.datetime.today()
-
-    def get_task_metrics(self, tasks, metrics=None):
-        # Initialize to zero so that graphite gets a zero even if a dev has no tasks
-        if not metrics:
-            metrics = dict()
-
-            devs = self.get_devs()
-
-            for dev in devs:
-                metrics['hours_{0}'.format(dev[0])] = 0
-
-        for item in tasks:
-            if 'assignees' not in item:
-                continue
-
-            for user in item['assignees']:
-                hours_key = 'hours_{0}'.format(user['login'])
-                if hours_key not in metrics:
-                    continue
-
-                metrics[hours_key] += self.get_hours_remaining(item['title'].strip())
         return metrics
 
     def get_lanes_metrics(self, lanes, metrics=None):
@@ -365,7 +290,7 @@ class UfwMetrics:
 
     def gather(self):
 
-        # # D43 API metrics
+        # D43 API metrics
         d43api_api = self.get_api_url("d43api_api")
 
         status = self.get_json_from_url(d43api_api)
@@ -393,21 +318,6 @@ class UfwMetrics:
         # Load Github var and log our rate_limit details
         github_token = self.get_env_var('GITHUB_TOKEN')
         self.logger.info(self.get_json_from_url('https://api.github.com/rate_limit', github_token))
-
-        # tC Dev Hour Metrics
-        hour_metrics = dict()
-        for x in [1, 2, 3]:
-            tasks_api = self.get_api_url("tasks_api")
-
-            tasks = self.get_json_from_url(tasks_api.format(x), github_token)
-            hour_metrics = self.get_task_metrics(tasks, hour_metrics)
-
-        time_left = self.get_milestone_time_left(github_token)
-        days_left = self.get_days_remaining(time_left)
-        hour_metrics = self.get_available_hours(days_left, hour_metrics)
-        self.logger.info(hour_metrics)
-        hour_messages = self.get_graphite_messages(hour_metrics, 'tc_dev')
-        self.push_to_graphite(hour_messages)
 
         # tC Dev Lane Metrics
         zenhub_token = self.get_env_var('ZENHUB_TOKEN')
