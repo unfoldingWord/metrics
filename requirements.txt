@@ -1,5 +1,6 @@
 certifi==2021.5.30
 chardet==4.0.0
+graphyte==1.7.1
 idna==2.10
 python-dotenv==0.17.1
 requests==2.25.1

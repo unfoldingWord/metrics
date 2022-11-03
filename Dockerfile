@@ -1,12 +1,13 @@
 FROM python:alpine
 
-ADD gatherer.py /
-ADD template.html /
+WORKDIR /app
 
-COPY requirements.txt /
+COPY gatherer.py .
+COPY requirements.txt .
+COPY gatherers ./gatherers
 
 # Install requirements
 # Disable caching, to keep Docker image lean
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD [ "python", "./gatherer.py" ]
+CMD [ "python", "/app/gatherer.py" ]

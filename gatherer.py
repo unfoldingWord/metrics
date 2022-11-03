@@ -1,5 +1,5 @@
 import os
-import re
+# import re
 import sys
 import socket
 import statsd
@@ -8,6 +8,8 @@ import datetime
 import requests
 from dotenv import load_dotenv
 import json
+# Here are all our gatherer components
+from gatherers import *
 
 # in develop only?
 load_dotenv()
@@ -59,14 +61,14 @@ class UfwMetrics:
     def get_env_var(self, env_name):
         return os.getenv(env_name, False)
 
-    def get_graphite_messages(self, metrics, ns):
-        messages = list()
-        now = datetime.datetime.now().strftime('%s')
-
-        for k, v in metrics.items():
-            messages.append('stats.gauges.{0}.{1} {2} {3}\n'.format(ns, k, v, now))
-
-        return messages
+    # def get_graphite_messages(self, metrics, ns):
+    #     messages = list()
+    #     now = datetime.datetime.now().strftime('%s')
+    #
+    #     for k, v in metrics.items():
+    #         messages.append('stats.gauges.{0}.{1} {2} {3}\n'.format(ns, k, v, now))
+    #
+    #     return messages
 
     def get_json_from_url(self, url, token="", auth="", params=""):
         if token:
@@ -258,34 +260,34 @@ class UfwMetrics:
         self.logger.info(metrics)
         return metrics
 
-    # TODO: this either needs to be implemented seriously, or removed altogether
-    # I assume this should track Downloads. Can't find any information
-    # with regards to this in the Play Store Console!
-    def play(self, metrics=None):
-        if not metrics:
-            metrics = dict()
+    # # TODO: this either needs to be implemented seriously, or removed altogether
+    # # I assume this should track Downloads. Can't find any information
+    # # with regards to this in the Play Store Console!
+    # def play(self, metrics=None):
+    #     if not metrics:
+    #         metrics = dict()
+    #
+    #     metrics['ts-android_total'] = 1737
+    #     metrics['uw-android_total'] = 1411
+    #     metrics['tk-android_total'] = 724
+    #
+    #     self.logger.info(metrics)
+    #     return metrics
 
-        metrics['ts-android_total'] = 1737
-        metrics['uw-android_total'] = 1411
-        metrics['tk-android_total'] = 724
-
-        self.logger.info(metrics)
-        return metrics
-
-    def get_lanes_metrics(self, lanes, metrics=None):
-        if not metrics:
-            metrics = dict()
-
-        for lane in lanes['pipelines']:
-            sanitized_name = re.sub(r'\W+', '-', lane['name'])
-            lane_issues_key = 'lane_issues_{0}'.format(sanitized_name)
-            metrics[lane_issues_key] = len(lane['issues'])
-            lane_points_key = 'lane_points_{0}'.format(sanitized_name)
-            metrics[lane_points_key] = 0
-            for issue in lane['issues']:
-                if 'estimate' in issue:
-                    metrics[lane_points_key] += issue['estimate']['value']
-        return metrics
+    # def get_lanes_metrics(self, lanes, metrics=None):
+    #     if not metrics:
+    #         metrics = dict()
+    #
+    #     for lane in lanes['pipelines']:
+    #         sanitized_name = re.sub(r'\W+', '-', lane['name'])
+    #         lane_issues_key = 'lane_issues_{0}'.format(sanitized_name)
+    #         metrics[lane_issues_key] = len(lane['issues'])
+    #         lane_points_key = 'lane_points_{0}'.format(sanitized_name)
+    #         metrics[lane_points_key] = 0
+    #         for issue in lane['issues']:
+    #             if 'estimate' in issue:
+    #                 metrics[lane_points_key] += issue['estimate']['value']
+    #     return metrics
 
     def d43api(self, status, metrics=None):
         if not metrics:
@@ -331,22 +333,25 @@ class UfwMetrics:
             self.push_to_statsd(github_metrics, prefix="github")
 
         # Google play metrics
-        play_metrics = self.play()
-        self.push_to_statsd(play_metrics, prefix="play")
+        obj_gatherer_gplay = GooglePlay()
+        obj_gatherer_gplay.gather()
 
         # Load Github var and log our rate_limit details
         github_token = self.get_env_var('GITHUB_TOKEN')
         self.logger.info(self.get_json_from_url('https://api.github.com/rate_limit', github_token))
 
-        # tC Dev Lane Metrics
-        zenhub_token = self.get_env_var('ZENHUB_TOKEN')
-        zenhub_api = self.get_api_url("zenhub_api")
+        # tC Dev Lane Metrics (Zenhub)
+        obj_gatherer_zenhub = Zenhub()
+        obj_gatherer_zenhub.gather()
 
-        lanes = self.get_json_from_url(zenhub_api.format(zenhub_token))
-        lanes_metrics = self.get_lanes_metrics(lanes)
-        self.logger.info(lanes_metrics)
-        lanes_messages = self.get_graphite_messages(lanes_metrics, 'tc_dev')
-        self.push_to_graphite(lanes_messages)
+        # zenhub_token = self.get_env_var('ZENHUB_TOKEN')
+        # zenhub_api = self.get_api_url("zenhub_api")
+        #
+        # lanes = self.get_json_from_url(zenhub_api.format(zenhub_token))
+        # lanes_metrics = self.get_lanes_metrics(lanes)
+        # self.logger.info(lanes_metrics)
+        # lanes_messages = self.get_graphite_messages(lanes_metrics, 'tc_dev')
+        # self.push_to_graphite(lanes_messages)
 
         # SendGrid stats
         sendgrid_token = self.get_env_var('SENDGRID_TOKEN')
