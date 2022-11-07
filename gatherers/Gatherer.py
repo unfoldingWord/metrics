@@ -35,7 +35,10 @@ class Gatherer:
             for key in value:
                 full_metric = prefix + '.' + metric + '.' + key
                 the_val = value[key]
-                graphyte.send(full_metric, the_val)
+                try:
+                    graphyte.send(full_metric, the_val)
+                except:
+                    print(full_metric + ': ' + str(the_val))
 
         elif type(value) is int:
             full_metric = prefix + '.' + metric

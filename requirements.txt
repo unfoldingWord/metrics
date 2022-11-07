@@ -4,5 +4,4 @@ graphyte==1.7.1
 idna==2.10
 python-dotenv==0.17.1
 requests==2.25.1
-statsd==3.3.0
 urllib3==1.26.5
