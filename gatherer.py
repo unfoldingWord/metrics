@@ -13,6 +13,7 @@ load_dotenv()
 class UfwMetrics:
 
     def __init__(self):
+        pass
         self.logger = self.init_logger()
 
         self.check_environment_variables()
@@ -32,10 +33,22 @@ class UfwMetrics:
                 sys.exit(1)
 
     def init_logger(self):
-        logging.basicConfig()
-
         this_logger = logging.getLogger()
-        this_logger.setLevel(logging.INFO)
+
+        if not this_logger.hasHandlers():
+            c_handler = logging.StreamHandler()
+            if os.getenv('STAGE', False) == 'dev':
+                c_handler.setLevel(logging.DEBUG)
+                this_logger.setLevel(logging.DEBUG)
+            else:
+                c_handler.setLevel(logging.INFO)
+                this_logger.setLevel(logging.INFO)
+
+            log_format = '%(asctime)s  %(levelname)-8s %(message)s'
+            c_format = logging.Formatter(log_format, datefmt='%Y-%m-%d %H:%M:%S')
+            c_handler.setFormatter(c_format)
+
+            this_logger.addHandler(c_handler)
 
         return this_logger
 

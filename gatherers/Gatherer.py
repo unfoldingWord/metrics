@@ -11,24 +11,11 @@ class Gatherer:
         # Init graphite
         graphyte.init(graphite_host)
 
-        self._logger = self.__init_logger()
-
-    def __init_logger(self):
-        if os.getenv('STAGE', False) == 'dev':
-            log_level = logging.DEBUG
-        else:
-            log_level = logging.INFO
-
-        logging.basicConfig(
-            format='%(asctime)s %(levelname)-8s %(message)s',
-            level=log_level,
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-
-        this_logger = logging.getLogger()
-        return this_logger
+        # Init logging
+        self._logger = logging.getLogger()
 
     def _send_to_graphite(self, prefix, metric, value):
+
         self._logger.info(prefix + '.' + metric + ': ' + str(value))
 
         if type(value) is dict:
