@@ -86,6 +86,10 @@ class UfwMetrics:
         obj_gatherer_sendgrid = Sendgrid()
         obj_gatherer_sendgrid.gather()
 
+        # tX stats
+        obj_tx = TX()
+        obj_tx.gather()
+
 
 if __name__ == "__main__":
     obj_metrics = UfwMetrics()
