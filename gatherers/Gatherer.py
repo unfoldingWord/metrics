@@ -14,10 +14,13 @@ class Gatherer:
         # Init logging
         self._logger = logging.getLogger()
 
-    def _send_to_graphite(self, prefix, metric, value):
+    def _send_to_graphite(self, prefix, metric, value, timestamp=None):
 
-        self._logger.info(prefix + '.' + metric + ': ' + str(value))
+        ts_log = ' (ts: ' + str(timestamp) + ')' if timestamp else ''
 
+        self._logger.info(prefix + '.' + metric + ': ' + str(value) + ts_log)
+
+        # TODO: needs better exception handling
         if type(value) is dict:
             for key in value:
                 full_metric = prefix + '.' + metric + '.' + key
@@ -29,7 +32,7 @@ class Gatherer:
 
         elif type(value) is int:
             full_metric = prefix + '.' + metric
-            graphyte.send(full_metric, value)
+            graphyte.send(full_metric, value, timestamp=timestamp)
 
     def _get_env(self, env):
         env_var = os.getenv(env, False)
