@@ -46,13 +46,18 @@ class Gatherer:
 
         return env_var
 
-    # I don't like this function
     def _get_json_from_url(self, url, token="", auth=""):
+        # Basic headers
+        req_headers = {
+            'User-Agent': 'MetricsGatherer/1.0; https://github.com/unfoldingWord/metrics'
+        }
+
         if token:
-            raw = requests.get(url, auth=('token', token))
+            raw = requests.get(url, auth=('token', token), headers=req_headers)
         elif auth:
-            raw = requests.get(url, headers={'Authorization': auth})
+            req_headers['Authorization'] = auth
+            raw = requests.get(url, headers=req_headers)
         else:
-            raw = requests.get(url)
+            raw = requests.get(url, headers=req_headers)
 
         return raw.json()
