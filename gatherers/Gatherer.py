@@ -22,7 +22,6 @@ class Gatherer:
 
         # If we don't want to send the metrics to Graphite, we allow them to be logged, but we don't actually send them
         if self._get_env('SEND_METRICS') == 'false':
-            self._logger.warning('Metrics not sent. Environment variable SEND_METRICS set to \'false\'')
             return
 
         # TODO: needs better exception handling

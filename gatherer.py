@@ -57,6 +57,9 @@ class UfwMetrics:
 
     def gather(self):
 
+        if self.get_env_var('SEND_METRICS') == 'false':
+            self.logger.warning('Metrics will not be sent to graphite. Environment variable SEND_METRICS set to \'false\'')
+
         # Door43 (Lambda status)
         obj_gatherer_d43 = Door43()
         obj_gatherer_d43.gather()
@@ -71,8 +74,9 @@ class UfwMetrics:
 
         # Git metrics
         obj_gatherer_github = Github()
+        #obj_gatherer_github.gather()
         # Only get these periodically, to stay under our rate limit
-        if datetime.datetime.now().minute == 0 and datetime.datetime.now().hour in [8, 12, 16, 20]:
+        if datetime.datetime.now().minute in list(range(0,5)) and datetime.datetime.now().hour in [8, 12, 16, 20]:
             obj_gatherer_github.gather()
 
         # Load Github var and log our rate_limit details
