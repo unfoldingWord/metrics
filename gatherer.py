@@ -54,45 +54,54 @@ class UfwMetrics:
     def get_env_var(self, env_name):
         return os.getenv(env_name, False)
 
+    def _metric_can_run(self, metric_name):
+        if self.get_env_var('FETCH_METRICS'):
+            lst_metrics_to_fetch = self.get_env_var('FETCH_METRICS').replace(" ", "").split(",")
+
+            if metric_name not in lst_metrics_to_fetch:
+                return False
+
+        # FETCH_METRICS is not defined, or the metric name DOES occur in lst_metrics_to_fetch
+        # In either case, we can run!
+        return True
+
     def gather(self):
 
         if self.get_env_var('SEND_METRICS') == 'false':
             self.logger.warning('Metrics will not be sent to graphite. Environment variable SEND_METRICS set to \'false\'')
 
-        lst_metrics_to_fetch = self.get_env_var('FETCH_METRICS').split(",")
-
         # Door43 (Lambda status)
-        if "door43" in lst_metrics_to_fetch:
+        if self._metric_can_run("door43"):
             obj_gatherer_d43 = Door43()
             obj_gatherer_d43.gather()
 
         # Td metrics
-        if "td" in lst_metrics_to_fetch:
+        if self._metric_can_run("td"):
             obj_gatherer_td = TD()
             obj_gatherer_td.gather()
 
         # Catalog
-        if "catalog" in lst_metrics_to_fetch:
+        if self._metric_can_run("catalog"):
             obj_gatherer_catalog_next = CatalogNext()
             obj_gatherer_catalog_next.gather()
 
-        # Git metrics
-        if "github" in lst_metrics_to_fetch:
+        # GitHub metrics
+        if self._metric_can_run("github"):
             obj_gatherer_github = Github()
             obj_gatherer_github.gather()
 
         # Google play metrics
-        if "google_play" in lst_metrics_to_fetch:
+        if self._metric_can_run("google_play"):
             obj_gatherer_gplay = GooglePlay()
             obj_gatherer_gplay.gather()
 
         # SendGrid stats
-        if "sendgrid" in lst_metrics_to_fetch:
+        if self._metric_can_run("sendgrid"):
             obj_gatherer_sendgrid = Sendgrid()
             obj_gatherer_sendgrid.gather()
 
         # tX stats
-        if "tx" in lst_metrics_to_fetch:
+        if self._metric_can_run("tx"):
             obj_tx = TX()
             obj_tx.gather()
 
