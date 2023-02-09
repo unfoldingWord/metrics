@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-import datetime
 from dotenv import load_dotenv
 # Here are all our gatherer components
 from gatherers import *
@@ -60,39 +59,42 @@ class UfwMetrics:
         if self.get_env_var('SEND_METRICS') == 'false':
             self.logger.warning('Metrics will not be sent to graphite. Environment variable SEND_METRICS set to \'false\'')
 
+        lst_metrics_to_fetch = self.get_env_var('FETCH_METRICS').split(",")
+
         # Door43 (Lambda status)
-        obj_gatherer_d43 = Door43()
-        obj_gatherer_d43.gather()
+        if "door43" in lst_metrics_to_fetch:
+            obj_gatherer_d43 = Door43()
+            obj_gatherer_d43.gather()
 
         # Td metrics
-        obj_gatherer_td = TD()
-        obj_gatherer_td.gather()
+        if "td" in lst_metrics_to_fetch:
+            obj_gatherer_td = TD()
+            obj_gatherer_td.gather()
 
         # Catalog
-        obj_gatherer_catalog_next = CatalogNext()
-        obj_gatherer_catalog_next.gather()
+        if "catalog" in lst_metrics_to_fetch:
+            obj_gatherer_catalog_next = CatalogNext()
+            obj_gatherer_catalog_next.gather()
 
         # Git metrics
-        obj_gatherer_github = Github()
-        #obj_gatherer_github.gather()
-        # Only get these periodically, to stay under our rate limit
-        if datetime.datetime.now().minute in list(range(0,5)) and datetime.datetime.now().hour in [8, 12, 16, 20]:
+        if "github" in lst_metrics_to_fetch:
+            obj_gatherer_github = Github()
             obj_gatherer_github.gather()
 
-        # Load Github var and log our rate_limit details
-        obj_gatherer_github.log_stats()
-
         # Google play metrics
-        obj_gatherer_gplay = GooglePlay()
-        obj_gatherer_gplay.gather()
+        if "google_play" in lst_metrics_to_fetch:
+            obj_gatherer_gplay = GooglePlay()
+            obj_gatherer_gplay.gather()
 
         # SendGrid stats
-        obj_gatherer_sendgrid = Sendgrid()
-        obj_gatherer_sendgrid.gather()
+        if "sendgrid" in lst_metrics_to_fetch:
+            obj_gatherer_sendgrid = Sendgrid()
+            obj_gatherer_sendgrid.gather()
 
         # tX stats
-        obj_tx = TX()
-        obj_tx.gather()
+        if "tx" in lst_metrics_to_fetch:
+            obj_tx = TX()
+            obj_tx.gather()
 
 
 if __name__ == "__main__":
