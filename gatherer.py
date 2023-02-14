@@ -54,7 +54,7 @@ class UfwMetrics:
     def get_env_var(self, env_name):
         return os.getenv(env_name, False)
 
-    def _metric_can_run(self, metric_name):
+    def _gatherer_can_run(self, metric_name):
         if self.get_env_var('FETCH_METRICS'):
             lst_metrics_to_fetch = self.get_env_var('FETCH_METRICS').replace(" ", "").split(",")
 
@@ -70,40 +70,58 @@ class UfwMetrics:
         if self.get_env_var('SEND_METRICS') == 'false':
             self.logger.warning('Metrics will not be sent to graphite. Environment variable SEND_METRICS set to \'false\'')
 
+        metrics_ran = 0
+
         # Door43 (Lambda status)
-        if self._metric_can_run("door43"):
+        if self._gatherer_can_run("door43"):
+            metrics_ran += 1
+
             obj_gatherer_d43 = Door43()
             obj_gatherer_d43.gather()
 
         # Td metrics
-        if self._metric_can_run("td"):
+        if self._gatherer_can_run("td"):
+            metrics_ran += 1
+
             obj_gatherer_td = TD()
             obj_gatherer_td.gather()
 
         # Catalog
-        if self._metric_can_run("catalog"):
+        if self._gatherer_can_run("catalog"):
+            metrics_ran += 1
+
             obj_gatherer_catalog_next = CatalogNext()
             obj_gatherer_catalog_next.gather()
 
         # GitHub metrics
-        if self._metric_can_run("github"):
+        if self._gatherer_can_run("github"):
+            metrics_ran += 1
+
             obj_gatherer_github = Github()
             obj_gatherer_github.gather()
 
         # Google play metrics
-        if self._metric_can_run("google_play"):
+        if self._gatherer_can_run("google_play"):
+            metrics_ran += 1
+
             obj_gatherer_gplay = GooglePlay()
             obj_gatherer_gplay.gather()
 
         # SendGrid stats
-        if self._metric_can_run("sendgrid"):
+        if self._gatherer_can_run("sendgrid"):
+            metrics_ran += 1
+
             obj_gatherer_sendgrid = Sendgrid()
             obj_gatherer_sendgrid.gather()
 
         # tX stats
-        if self._metric_can_run("tx"):
+        if self._gatherer_can_run("tx"):
+            metrics_ran += 1
+
             obj_tx = TX()
             obj_tx.gather()
+
+        self.logger.info('Ran {0} metric gatherers'.format(metrics_ran))
 
 
 if __name__ == "__main__":
