@@ -4,6 +4,7 @@ import logging
 from dotenv import load_dotenv
 # Here are all our gatherer components
 from gatherers import *
+import graphyte
 
 # in develop only?
 load_dotenv()
@@ -12,7 +13,10 @@ load_dotenv()
 class UfwMetrics:
 
     def __init__(self):
-        pass
+        # Init graphite
+        graphite_host = self.get_env_var('GRAPHITE_HOST')
+        graphyte.init(graphite_host)
+
         self.logger = self.init_logger()
 
         self.check_environment_variables()
@@ -30,6 +34,30 @@ class UfwMetrics:
             if not self.get_env_var(env_var):
                 self.logger.warning('Environment variable {0} not found.'.format(env_var))
                 sys.exit(1)
+
+    def _send_to_graphite(self, prefix, metric, value, timestamp=None):
+
+        ts_log = ' (ts: ' + str(timestamp) + ')' if timestamp else ''
+
+        self.logger.info(prefix + '.' + metric + ': ' + str(value) + ts_log)
+
+        # If we don't want to send the metrics to Graphite, we allow them to be logged, but we don't actually send them
+        if self.get_env_var('SEND_METRICS') == 'false':
+            return
+
+        # TODO: needs better exception handling
+        if type(value) is dict:
+            for key in value:
+                full_metric = prefix + '.' + metric + '.' + key
+                the_val = value[key]
+                try:
+                    graphyte.send(full_metric, the_val)
+                except:
+                    print(full_metric + ': ' + str(the_val))
+
+        elif type(value) is int:
+            full_metric = prefix + '.' + metric
+            graphyte.send(full_metric, value, timestamp=timestamp)
 
     def init_logger(self):
         this_logger = logging.getLogger()
@@ -68,7 +96,8 @@ class UfwMetrics:
     def gather(self):
 
         if self.get_env_var('SEND_METRICS') == 'false':
-            self.logger.warning('Metrics will not be sent to graphite. Environment variable SEND_METRICS set to \'false\'')
+            self.logger.warning('Metrics will not be sent to graphite. '
+                                'Environment variable SEND_METRICS set to \'false\'')
 
         metrics_ran = 0
 
@@ -122,6 +151,7 @@ class UfwMetrics:
             obj_tx.gather()
 
         self.logger.info('Ran {0} metric gatherer(s)'.format(metrics_ran))
+        self._send_to_graphite('stats.gauges', 'metrics.gathered', int(metrics_ran))
 
 
 if __name__ == "__main__":
