@@ -73,11 +73,12 @@ class CatalogNext(Gatherer):
 
             # 3c) Check for Aligned Bible
             if item["subject"] == "Aligned Bible":
+                for book in item["ingredients"]:
+                    book_title = book["identifier"]
 
-                for book in item["alignment_counts"]:
-                    if book not in dict_bp_collector[language]["aligned_books"]:
-                        if item["alignment_counts"][book] > 0:
-                            dict_bp_collector[language]["aligned_books"].append(book)
+                    if book_title not in dict_bp_collector[language]["aligned_books"]:
+                        if book["alignment_count"] > 0:
+                            dict_bp_collector[language]["aligned_books"].append(book_title)
 
         # 4) Building the actual metrics dictionary
         metrics = dict()
