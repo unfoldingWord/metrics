@@ -6,9 +6,8 @@ import requests
 
 class Gatherer:
     def __init__(self):
-        graphite_host = self._get_env('GRAPHITE_HOST')
-
         # Init graphite
+        graphite_host = self._get_env('GRAPHITE_HOST')
         graphyte.init(graphite_host)
 
         # Init logging
