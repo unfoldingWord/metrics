@@ -121,7 +121,7 @@ class UfwMetrics:
             obj_tx = TX()
             obj_tx.gather()
 
-        self.logger.info('Ran {0} metric gatherers'.format(metrics_ran))
+        self.logger.info('Ran {0} metric gatherer(s)'.format(metrics_ran))
 
 
 if __name__ == "__main__":
