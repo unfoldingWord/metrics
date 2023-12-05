@@ -2,6 +2,7 @@ from .Gatherer import Gatherer
 
 
 class TD(Gatherer):
+    # This class is kind of deprecated, as langnames.json is no longer actively updated
     def __init__(self):
         super().__init__()
 
