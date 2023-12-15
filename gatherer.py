@@ -104,6 +104,7 @@ class UfwMetrics:
         # Door43 (Lambda status)
         if self._gatherer_can_run("door43"):
             metrics_ran += 1
+            self.logger.info("Running Door43 gatherer")
 
             obj_gatherer_d43 = Door43()
             obj_gatherer_d43.gather()
@@ -111,6 +112,7 @@ class UfwMetrics:
         # Td metrics
         if self._gatherer_can_run("td"):
             metrics_ran += 1
+            self.logger.info("Running TD gatherer")
 
             obj_gatherer_td = TD()
             obj_gatherer_td.gather()
@@ -118,6 +120,7 @@ class UfwMetrics:
         # Catalog
         if self._gatherer_can_run("catalog"):
             metrics_ran += 1
+            self.logger.info("Running Catalog gatherer")
 
             obj_gatherer_catalog_next = CatalogNext()
             obj_gatherer_catalog_next.gather()
@@ -125,6 +128,7 @@ class UfwMetrics:
         # GitHub metrics
         if self._gatherer_can_run("github"):
             metrics_ran += 1
+            self.logger.info("Running Github gatherer")
 
             obj_gatherer_github = Github()
             obj_gatherer_github.gather()
@@ -132,6 +136,7 @@ class UfwMetrics:
         # Google play metrics
         if self._gatherer_can_run("google_play"):
             metrics_ran += 1
+            self.logger.info("Running Google Play gatherer")
 
             obj_gatherer_gplay = GooglePlay()
             obj_gatherer_gplay.gather()
@@ -139,6 +144,7 @@ class UfwMetrics:
         # SendGrid stats
         if self._gatherer_can_run("sendgrid"):
             metrics_ran += 1
+            self.logger.info("Running Sendgrid gatherer")
 
             obj_gatherer_sendgrid = Sendgrid()
             obj_gatherer_sendgrid.gather()
@@ -146,6 +152,7 @@ class UfwMetrics:
         # tX stats
         if self._gatherer_can_run("tx"):
             metrics_ran += 1
+            self.logger.info("Running TX gatherer")
 
             obj_tx = TX()
             obj_tx.gather()
