@@ -78,8 +78,8 @@ class Github(Gatherer):
 
         # We are sending the metrics in batches instead of one big aggregate,
         # to enable Graphite to catch up. Somehow, random metrics appeared to fall through the cracks.
-        #metrics = self._get_software_release_downloads()
-        #self._send_to_graphite('stats.gauges', 'github', metrics)
+        metrics = self._get_software_release_downloads()
+        self._send_to_graphite('stats.gauges', 'github', metrics)
 
         metrics = self._get_repository_clones()
         self._send_to_graphite('stats.gauges', 'github', metrics)
