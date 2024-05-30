@@ -3,6 +3,7 @@ from github import Github as Gh
 import datetime
 from dateutil.relativedelta import *
 
+
 class Github(Gatherer):
     def __init__(self):
         super().__init__()
@@ -44,8 +45,8 @@ class Github(Gatherer):
 
             for repo in repos:
 
-                if not repo.archived:
-                    # For every active (non-archived) repo, get activity (commits) from last 6 months
+                if (not repo.archived) and repo.size > 0:
+                    # For every active (non-archived) and non-empty repo, get activity (commits) from last 6 months
                     total_commits = repo.get_commits(since=dt_last_6_months).totalCount
                     if total_commits > 0:
                         repo_name = repo.name.replace(".", "_")
