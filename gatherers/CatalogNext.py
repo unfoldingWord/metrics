@@ -6,7 +6,7 @@ class CatalogNext(Gatherer):
         super().__init__()
 
     def gather(self):
-        url = 'https://git.door43.org/api/catalog/v5/search'
+        url = 'https://git.door43.org/api/v1/catalog/search'
         catalog_data = self._get_json_from_url(url)
 
         lst_gls = list()
