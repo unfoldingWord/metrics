@@ -19,6 +19,12 @@ class Door43(Gatherer):
 
         for endpoint in status['functions']:
             name = endpoint['name'].replace('.', '_')
+
+            # these APIs are deprecated
+            lst_deprecated = ['uw_2', 'ts_2']
+            if name in lst_deprecated:
+                continue
+
             try:
                 metrics[name] = api_status[endpoint['status']]
             except KeyError:
