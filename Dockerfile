@@ -1,7 +1,17 @@
-FROM python:alpine
+FROM cgr.dev/chainguard/wolfi-base
+
+# Set Python version
+ARG version=3.12
 
 WORKDIR /app
 
+# Install required packages
+RUN apk update && apk add --no-cache \
+    python-${version} \
+    py${version}-pip \
+    py${version}-setuptools
+
+# Copy app files
 COPY gatherer.py .
 COPY requirements.txt .
 COPY gatherers ./gatherers
