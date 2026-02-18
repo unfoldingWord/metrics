@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 # Here are all our gatherer components
 from gatherers import *
 import graphyte
+import requests
 
 # in develop only?
 load_dotenv()
@@ -13,11 +14,14 @@ load_dotenv()
 class UfwMetrics:
 
     def __init__(self):
+        self.logger = self.init_logger()
+
+        if self.get_env_var('CALLBACK_START'):
+            requests.get(self.get_env_var('CALLBACK_START'))
+
         # Init graphite
         graphite_host = self.get_env_var('GRAPHITE_HOST')
         graphyte.init(graphite_host)
-
-        self.logger = self.init_logger()
 
         self.check_environment_variables()
 
@@ -157,8 +161,13 @@ class UfwMetrics:
             obj_tx = TX()
             obj_tx.gather()
 
+        # Send metrics
         self.logger.info('Ran {0} metric gatherer(s)'.format(metrics_ran))
         self._send_to_graphite('stats.gauges', 'metrics.gathered', int(metrics_ran))
+
+        # Check out at the gate
+        if self.get_env_var('CALLBACK_SUCCESS'):
+            requests.post(self.get_env_var('CALLBACK_SUCCESS'), data=f'metrics_ran={metrics_ran}')
 
 
 if __name__ == "__main__":
