@@ -105,14 +105,6 @@ class UfwMetrics:
 
         metrics_ran = 0
 
-        # Door43 (Lambda status)
-        if self._gatherer_can_run("door43"):
-            metrics_ran += 1
-            self.logger.info("Running Door43 gatherer")
-
-            obj_gatherer_d43 = Door43()
-            obj_gatherer_d43.gather()
-
         # Td metrics
         if self._gatherer_can_run("td"):
             metrics_ran += 1
